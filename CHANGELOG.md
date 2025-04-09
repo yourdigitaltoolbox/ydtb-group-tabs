@@ -1,7 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
-## [0.0.4] - 2025-05-15
+
+## [0.0.5] - 2025-04-09
+### Fixed
+- Resolved an issue with the action loading order that caused unexpected behavior.
+
+## [0.0.4] - 2025-04-09
 ### Changed
 - Updated the GitHub workflow to combine the release and deploy processes into a single workflow.
 
