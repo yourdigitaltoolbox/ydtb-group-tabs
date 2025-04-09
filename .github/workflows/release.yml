@@ -1,0 +1,131 @@
+name: Build And Release Plugin Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_level:
+        type: choice
+        description: Bump Level
+        options:
+          - patch
+          - minor
+          - major
+          - prepatch
+          - preminor
+          - premajor
+      prerelease-id:
+        type: choice
+        description: Prerelease ID
+        options:
+          - alpha
+          - beta
+          - rc
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # setting the environment variable for the PAT_TOKEN is the only way to get the next step deploy to trigger.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: release
+          token: ${{ secrets.PAT_TOKEN }}
+          fetch-depth: 0
+
+      - uses: php-actions/composer@v6
+        with:
+          working_dir: "release"
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: |
+          cd release
+          bun install
+          git checkout bun.lockb
+
+      - name: Capture Current Version
+        id: capture_current_version
+        run: |
+          cd release
+          echo "CURRENT_VERSION=$(bun release-it --release-version --no-increment)" >> $GITHUB_ENV
+
+      - name: Set Update Version Flags
+        run: |
+          if [[ "${{ inputs.bump_level }}" == pre* ]]; then
+            if [[ "${{ env.CURRENT_VERSION }}" == *-* ]]; then
+              echo "PRE_RELEASE=--preRelease" >> $GITHUB_ENV
+              echo "BUMP_LEVEL=" >> $GITHUB_ENV
+              echo "PRE_RELEASE_ID=" >> $GITHUB_ENV
+            else
+              echo "PRE_RELEASE=" >> $GITHUB_ENV
+              echo "BUMP_LEVEL=${{ inputs.bump_level }}" >> $GITHUB_ENV
+              echo "PRE_RELEASE_ID=--preReleaseId=${{ inputs.prerelease-id }}" >> $GITHUB_ENV
+            fi
+          else
+            echo "PRE_RELEASE=" >> $GITHUB_ENV
+            echo "BUMP_LEVEL=${{ inputs.bump_level }}" >> $GITHUB_ENV
+            echo "PRE_RELEASE_ID=" >> $GITHUB_ENV
+          fi
+
+      - name: Capture Update Version
+        id: capture_release_version
+        run: |
+          cd release
+          echo "RELEASE_VERSION=$(bun release-it ${{env.BUMP_LEVEL}} ${{env.PRE_RELEASE}} ${{env.PRE_RELEASE_ID}} --release-version)" >> $GITHUB_ENV
+
+      - name: Bump The Version
+        id: bump_version
+        continue-on-error: true
+        run: |
+          cd release
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          echo "BUMP_OUTPUT=$(bun release-it ${{env.BUMP_LEVEL}} ${{env.PRE_RELEASE}} ${{env.PRE_RELEASE_ID}} --ci)" >> $GITHUB_ENV
+
+      - name: Debug The Bump
+        run: |
+          echo "${{ env.BUMP_OUTPUT }}"
+
+      - name: Set Repo Name
+        run: |
+          echo "REPO_NAME=$(echo ${GITHUB_REPOSITORY#$GITHUB_REPOSITORY_OWNER/} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Prepare Release
+        run: |
+          rm -rf release/.git
+          rm -rf release/.release-it.json
+          rm -rf release/.github
+          rm -rf release/.env
+          rm -rf release/node_modules
+
+      - name: Rename Folder
+        run: |
+          mv release ${{env.REPO_NAME}}
+
+      - name: List Directory
+        run: |
+          ls -la
+
+      - name: Zip directory leaving out node_modules and .git
+        run: |
+          zip -r "${{env.REPO_NAME}}.zip" ${{env.REPO_NAME}}/
+
+      - name: Debug folder status
+        run: |
+          ls -la
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ steps.capture_version.outputs.RELEASE_VERSION }}
+          token: ${{ secrets.PAT_TOKEN }}
+          tag_name: ${{ env.RELEASE_VERSION}}
+          prerelease: ${{ env.PRE_RELEASE != '' && env.PRE_RELEASE != 'false' }}
+          files: |
+            *.zip

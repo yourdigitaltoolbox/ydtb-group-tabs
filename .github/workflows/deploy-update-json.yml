@@ -1,0 +1,90 @@
+# Simple workflow for deploying static content to GitHub Pages
+name: Generate and Deploy Plugin Manifest
+
+on:
+  release:
+    types:
+      - published
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Single deploy job since we're just deploying
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    if: ${{ ! (contains(github.event.release.tag_name, 'beta') || contains(github.event.release.tag_name, 'rc') || contains(github.event.release.tag_name, 'alpha')) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: "source"
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Get Repo Name
+        run: |
+          echo "REPO_NAME=$(echo ${GITHUB_REPOSITORY#$GITHUB_REPOSITORY_OWNER/} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Generate Download Link
+        run: |
+          version=$(jq -r '.version' source/package.json)
+          repo_url="${{ github.server_url }}/${{ github.repository }}"
+          echo "DOWNLOAD_URL=${repo_url}/releases/download/${version}/${{ env.REPO_NAME }}.zip" >> $GITHUB_ENV
+
+      - name: Make dist directory
+        id: make-dist
+        run: |
+          mkdir -p dist
+
+      - name: Generate Plugin Manifest
+        run: |
+          template=$(cat source/.github/template/manifest.json)
+          version=$(jq -r '.version' source/package.json)
+          download_url="${{ env.DOWNLOAD_URL }}"
+          requires=$(jq -r '.data.wordpress' source/composer.json)
+          tested=$(jq -r '.data.tested' source/composer.json)
+          requires_php=$(jq -r '.require.php' source/composer.json)
+          updated_date=$(date +"%Y-%m-%d %H:%M:%S")
+          changelog=$(cat source/CHANGELOG.md)
+
+          manifest=$(echo "$template" | jq \
+            --arg version "$version" \
+            --arg download_url "$download_url" \
+            --arg requires "$requires" \
+            --arg tested "$tested" \
+            --arg requires_php "$requires_php" \
+            --arg updated_date "$updated_date" \
+            --arg changelog "$changelog" \
+            '.version = $version |
+             .download_url = $download_url |
+             .requires = $requires |
+             .tested = $tested |
+             .requires_php = $requires_php |
+             .last_updated = $updated_date |
+             .sections.changelog = $changelog')
+
+          echo "$manifest" > dist/manifest.json
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "./dist"
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

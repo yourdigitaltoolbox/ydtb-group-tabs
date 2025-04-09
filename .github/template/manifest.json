@@ -1,0 +1,24 @@
+{
+    "name": "YDTB Group Tabs",
+    "slug": "ydtb-group-tabs",
+    "author": "John Kraczek",
+    "author_profile": "https://profiles.wordpress.org/johnkraczek",
+    "donate_link": "",
+    "version": "{{version}}",
+    "download_url": "{{download_url}}",
+    "requires": "{{requires}}",
+    "tested": "{{tested}}",
+    "requires_php": "{{requires_php}}",
+    "added": "2024-11-07 10:10:00",
+    "last_updated": "{{updated-date}}",
+    "homepage": "https://yourdigitaltoolbox.com",
+    "sections": {
+        "description": "Addition of group tabs to BuddyBoss Groups.",
+        "installation": "Click the activate button and that's it.",
+        "changelog": "{{changelog}}"
+    },
+    "banners": {
+        "low": "",
+        "high": ""
+    }
+}
