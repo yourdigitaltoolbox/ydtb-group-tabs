@@ -3,7 +3,7 @@
 namespace YDTBGroupTabsRoot;
 
 use YDTBGroupTabs\Utils\Updater;
-use YDTBGroupTabs\Actions\GroupCreation;
+use YDTBGroupTabs\Lib\GroupExtension;
 
 class Plugin
 {
@@ -19,6 +19,8 @@ class Plugin
             return;
         }
         $this->register();
+        // Register buddyBoss Specific extensions
+        add_action('bp_include', [$this, 'registerBuddyBossExtensions']);
     }
 
     /**
@@ -28,7 +30,6 @@ class Plugin
     protected function providers()
     {
         return [
-            GroupCreation::class,
             Updater::class
         ];
     }
@@ -82,5 +83,11 @@ class Plugin
         // }
 
         return true;
+    }
+
+
+    public function registerBuddyBossExtensions()
+    {
+        add_action('bp_init', [GroupExtension::class, 'register']);
     }
 }
