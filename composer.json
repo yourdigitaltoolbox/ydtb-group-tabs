@@ -1,0 +1,40 @@
+{
+    "name": "ydtb/ydtb-group-tabs",
+    "type": "wordpress-plugin",
+    "license": "MIT",
+    "description": "A WordPress plugin that provides a group of tabs for displaying content in a tabbed interface.",
+    "homepage": "https://yourdigitaltoolbox.com",
+    "authors": [
+        {
+            "name": "John Kraczek",
+            "email": "john@yourdigitaltoolbox.com",
+            "homepage": "https://yourdigitaltoolbox.com"
+        }
+    ],
+    "keywords": [
+        "wordpress",
+        "plugin"
+    ],
+    "support": {
+        "issues": "https://github.com/your-org/your-repo/issues",
+        "forum": "https://example.com/forum"
+    },
+    "autoload": {
+        "psr-4": {
+            "YDTBGroupTabs\\": "src/server/",
+            "YDTBGroupTabsRoot\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "YDTBGroupTabsRoot\\Tests\\": "tests/"
+        }
+    },
+    "require": {
+        "php": "^8.0"
+    },
+    "data": {
+        "wordpress": "0",
+        "tested": "0"
+    }
+}
