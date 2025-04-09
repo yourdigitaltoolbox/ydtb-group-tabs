@@ -1,0 +1,22 @@
+{
+    "$schema": "https://unpkg.com/release-it@17/schema/release-it.json",
+    "git": {
+        "commitMessage": "chore: release v${version}",
+        "tag": true,
+        "push": true,
+        "commit": true
+    },
+    "github": {
+        "release": false
+    },
+    "plugins": {
+        "@release-it/bumper": {
+            "out": [
+                {
+                    "file": "ydtb-group-tabs.php",
+                    "type": "text/php"
+                }
+            ]
+        }
+    }
+}
