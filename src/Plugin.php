@@ -65,21 +65,21 @@ class Plugin
 
         if (!is_plugin_active('buddyboss-platform-pro/buddyboss-platform-pro.php')) {
             add_action('admin_notices', function () {
-                echo '<div class="notice notice-error"><p>BuddyBoss Platform must be installed and activated for this plugin to work.</p></div>';
+                echo '<div class="notice notice-error"><p>BuddyBoss Platform must be installed and activated for the YDTB-Group-Tabs plugin to work.</p></div>';
             });
             return false;
         }
 
-        // This requirement comes because we are using the Elementor Pro template shortcode to display the content
-        // in the group tab. In the future perhaps we can have conditional checks to see if elementor pro is active
-        // and if not, we can just allow the user to use their own shortcode to display the content. 
+        // // This requirement comes because we are using the Elementor Pro template shortcode to display the content
+        // // in the group tab. In the future perhaps we can have conditional checks to see if elementor pro is active
+        // // and if not, we can just allow the user to use their own shortcode to display the content. 
 
-        if (!is_plugin_active('elementor-pro/elementor-pro.php')) {
-            add_action('admin_notices', function () {
-                echo '<div class="notice notice-error"><p>Elementor Pro must be installed and activated for this plugin to work.</p></div>';
-            });
-            return false;
-        }
+        // if (!is_plugin_active('elementor-pro/elementor-pro.php')) {
+        //     add_action('admin_notices', function () {
+        //         echo '<div class="notice notice-error"><p>Elementor Pro must be installed and activated for this plugin to work.</p></div>';
+        //     });
+        //     return false;
+        // }
 
         return true;
     }

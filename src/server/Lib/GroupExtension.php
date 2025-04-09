@@ -54,7 +54,7 @@ class GroupExtension extends \BP_Group_Extension
         $redirect_url = groups_get_groupmeta($group_id, 'group_redirect_url');
         $group_tab_name = groups_get_groupmeta($group_id, 'group_tab_name');
         $group_tab_visibility = groups_get_groupmeta($group_id, 'group_tab_visibility');
-        $saved_sections = $this->get_saved_sections(); // Fetch saved Elementor sections
+        $saved_sections = $this->is_elementor_pro_active() ? $this->get_saved_sections() : [];
         ?>
 
         <h4><?php _e('Tab Extension Settings', 'ydtb-group-tabs'); ?></h4>
@@ -70,9 +70,11 @@ class GroupExtension extends \BP_Group_Extension
             <option value="redirect" <?php selected($display_type, 'redirect'); ?>>
                 <?php _e('Redirect User To URL', 'ydtb-group-tabs'); ?>
             </option>
-            <option value="elementor" <?php selected($display_type, 'elementor'); ?>>
-                <?php _e('Display Elementor Pro Saved Section', 'ydtb-group-tabs'); ?>
-            </option>
+            <?php if ($this->is_elementor_pro_active()): ?>
+                <option value="elementor" <?php selected($display_type, 'elementor'); ?>>
+                    <?php _e('Display Elementor Pro Saved Section', 'ydtb-group-tabs'); ?>
+                </option>
+            <?php endif; ?>
         </select>
         <br><br>
 
@@ -89,31 +91,37 @@ class GroupExtension extends \BP_Group_Extension
                 style="width: 100%;" placeholder="<?php _e('Enter URL', 'ydtb-group-tabs'); ?>">
         </div>
 
-        <div id="elementor_field" style="display: <?php echo $display_type === 'elementor' ? 'block' : 'none'; ?>;">
-            <p><?php _e('Select an Elementor Pro saved section to display content on this tab.', 'ydtb-group-tabs'); ?></p>
-            <select name="group_extension_elementor" id="group_extension_elementor" style="width: 100%;">
-                <option value=""><?php _e('Select a section', 'ydtb-group-tabs'); ?></option>
-                <?php foreach ($saved_sections as $section_id => $section_title): ?>
-                    <option value="[elementor-template id=&quot;<?php echo esc_attr($section_id); ?>&quot;]" <?php selected($elementor, '[elementor-template id="' . $section_id . '"]'); ?>>
-                        <?php echo esc_html($section_title); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
+        <?php if ($this->is_elementor_pro_active()): ?>
+            <div id="elementor_field" style="display: <?php echo $display_type === 'elementor' ? 'block' : 'none'; ?>;">
+                <p><?php _e('Select an Elementor Pro saved section to display content on this tab.', 'ydtb-group-tabs'); ?></p>
+                <select name="group_extension_elementor" id="group_extension_elementor" style="width: 100%;">
+                    <option value=""><?php _e('Select a section', 'ydtb-group-tabs'); ?></option>
+                    <?php foreach ($saved_sections as $section_id => $section_title): ?>
+                        <option value="[elementor-template id=&quot;<?php echo esc_attr($section_id); ?>&quot;]" <?php selected($elementor, '[elementor-template id="' . $section_id . '"]'); ?>>
+                            <?php echo esc_html($section_title); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        <?php endif; ?>
 
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 const displayType = document.getElementById('group_display_type').value;
                 document.getElementById('shortcode_field').style.display = displayType === 'shortcode' ? 'block' : 'none';
                 document.getElementById('redirect_field').style.display = displayType === 'redirect' ? 'block' : 'none';
-                document.getElementById('elementor_field').style.display = displayType === 'elementor' ? 'block' : 'none';
+                <?php if ($this->is_elementor_pro_active()): ?>
+                    document.getElementById('elementor_field').style.display = displayType === 'elementor' ? 'block' : 'none';
+                <?php endif; ?>
             });
 
             document.getElementById('group_display_type').addEventListener('change', function () {
                 const displayType = this.value;
                 document.getElementById('shortcode_field').style.display = displayType === 'shortcode' ? 'block' : 'none';
                 document.getElementById('redirect_field').style.display = displayType === 'redirect' ? 'block' : 'none';
-                document.getElementById('elementor_field').style.display = displayType === 'elementor' ? 'block' : 'none';
+                <?php if ($this->is_elementor_pro_active()): ?>
+                    document.getElementById('elementor_field').style.display = displayType === 'elementor' ? 'block' : 'none';
+                <?php endif; ?>
             });
         </script>
 
@@ -156,6 +164,11 @@ class GroupExtension extends \BP_Group_Extension
         groups_update_groupmeta($group_id, 'group_tab_visibility', $group_tab_visibility);
         groups_update_groupmeta($group_id, 'group_extension_elementor', $elementor_shortcode);
     }
+    private function is_elementor_pro_active()
+    {
+        return defined('ELEMENTOR_PRO_VERSION');
+    }
+
 
     private function get_saved_sections()
     {
