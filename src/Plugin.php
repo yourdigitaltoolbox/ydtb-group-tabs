@@ -3,8 +3,7 @@
 namespace YDTBGroupTabsRoot;
 
 use YDTBGroupTabs\Utils\Updater;
-use YDTBGroupTabs\Actions\GroupAdminMeta;
-use YDTBGroupTabs\Actions\GroupFormMeta;
+use YDTBGroupTabs\Actions\GroupCreation;
 
 class Plugin
 {
@@ -29,8 +28,7 @@ class Plugin
     protected function providers()
     {
         return [
-            GroupAdminMeta::class,
-            GroupFormMeta::class,
+            GroupCreation::class,
             Updater::class
         ];
     }

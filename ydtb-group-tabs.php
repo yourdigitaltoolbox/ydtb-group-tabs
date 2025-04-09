@@ -28,4 +28,3 @@ if (!file_exists($autoload_path)) {
 }
 require_once $autoload_path;
 new YDTBGroupTabsRoot\Plugin;
-
