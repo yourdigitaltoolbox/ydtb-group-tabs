@@ -8,12 +8,13 @@ class GroupExtension extends \BP_Group_Extension
     {
         $group_id = bp_get_current_group_id();
         $group_tab_name = $group_id ? groups_get_groupmeta($group_id, 'group_tab_name') : '';
+        $group_tab_visibility = $group_id ? groups_get_groupmeta($group_id, 'group_tab_visibility') : 'anyone';
 
         $args = array(
             'slug' => 'group-test',
             'name' => !empty($group_tab_name) ? $group_tab_name : __('Custom Tab', 'ydtb-group-tabs'),
             'nav_item_position' => 200,
-            'show_tab' => 'anyone',
+            'show_tab' => $group_tab_visibility,
             'screens' => array(
                 'edit' => array(
                     'name' => __('Tab Extension', 'ydtb-group-tabs'),
@@ -23,7 +24,6 @@ class GroupExtension extends \BP_Group_Extension
         );
         parent::init($args);
     }
-
     public function display($group_id = null)
     {
         $group_id = bp_get_group_id();
@@ -43,20 +43,40 @@ class GroupExtension extends \BP_Group_Extension
     {
         $shortcode = groups_get_groupmeta($group_id, 'group_extension_shortcode');
         $group_tab_name = groups_get_groupmeta($group_id, 'group_tab_name');
+        $group_tab_visibility = groups_get_groupmeta($group_id, 'group_tab_visibility');
         $saved_sections = $this->get_saved_sections(); // Fetch saved Elementor sections
         ?>
 
-        <h4><?php _e('Custom Tab Settings', 'ydtb-group-tabs'); ?></h4>
-        <p><?php _e('Set a custom name for this tab.', 'ydtb-group-tabs'); ?></p>
+        <h4><?php _e('Tab Extension Settings', 'ydtb-group-tabs'); ?></h4>
+        <p><?php _e('Set a custom name for this custom group tab.', 'ydtb-group-tabs'); ?></p>
         <input type="text" name="group_tab_name" id="group_tab_name" value="<?php echo esc_attr($group_tab_name); ?>"
             style="width: 100%;" placeholder="<?php _e('Enter tab name', 'ydtb-group-tabs'); ?>">
-        <br><br>
-        <p><?php _e('Select a saved section to display content on this tab.', 'ydtb-group-tabs'); ?></p>
+        <br>
+        <p><?php _e('Select an Elementor Pro saved section to display content on this tab.', 'ydtb-group-tabs'); ?></p>
         <select name="group_extension_shortcode" id="group_extension_shortcode" style="width: 100%;">
             <option value=""><?php _e('Select a section', 'ydtb-group-tabs'); ?></option>
             <?php foreach ($saved_sections as $section_id => $section_title): ?>
                 <option value="[elementor-template id=&quot;<?php echo esc_attr($section_id); ?>&quot;]" <?php selected($shortcode, '[elementor-template id="' . $section_id . '"]'); ?>>
                     <?php echo esc_html($section_title); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <br><br>
+        <p><?php _e('Set who can see this tab.', 'ydtb-group-tabs'); ?></p>
+        <?php
+        $visibility_options = array(
+            'anyone' => __('Anyone ( Public )', 'ydtb-group-tabs'),
+            'loggedin' => __('Logged In Users', 'ydtb-group-tabs'),
+            'member' => __('Group Members', 'ydtb-group-tabs'),
+            'mod' => __('Group Moderators', 'ydtb-group-tabs'),
+            'admin' => __('Group Admins', 'ydtb-group-tabs'),
+            'noone' => __('No One', 'ydtb-group-tabs'),
+        );
+        ?>
+        <select name="group_tab_visibility" id="group_tab_visibility" style="width: 100%;">
+            <?php foreach ($visibility_options as $value => $label): ?>
+                <option value="<?php echo esc_attr($value); ?>" <?php selected($group_tab_visibility, $value); ?>>
+                    <?php echo esc_html($label); ?>
                 </option>
             <?php endforeach; ?>
         </select>
@@ -68,9 +88,11 @@ class GroupExtension extends \BP_Group_Extension
     {
         $shortcode = isset($_POST['group_extension_shortcode']) ? sanitize_text_field($_POST['group_extension_shortcode']) : '';
         $group_tab_name = isset($_POST['group_tab_name']) ? sanitize_text_field($_POST['group_tab_name']) : '';
+        $group_tab_visibility = isset($_POST['group_tab_visibility']) ? sanitize_text_field($_POST['group_tab_visibility']) : 'anyone';
 
         groups_update_groupmeta($group_id, 'group_extension_shortcode', $shortcode);
         groups_update_groupmeta($group_id, 'group_tab_name', $group_tab_name);
+        groups_update_groupmeta($group_id, 'group_tab_visibility', $group_tab_visibility);
     }
 
     private function get_saved_sections()
