@@ -1,6 +1,10 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.0.4] - 2025-05-15
+### Changed
+- Updated the GitHub workflow to combine the release and deploy processes into a single workflow.
+
 
 ## [0.0.2] - 2025-04-09
 ### Added

@@ -1,4 +1,4 @@
-name: Build And Release Plugin Version
+name: Build, Release, and Deploy Plugin
 
 on:
   workflow_dispatch:
@@ -23,13 +23,14 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
 
     steps:
-      # setting the environment variable for the PAT_TOKEN is the only way to get the next step deploy to trigger.
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -125,7 +126,77 @@ jobs:
         with:
           name: Release ${{ steps.capture_version.outputs.RELEASE_VERSION }}
           token: ${{ secrets.PAT_TOKEN }}
-          tag_name: ${{ env.RELEASE_VERSION}}
+          tag_name: ${{ env.RELEASE_VERSION }}
           prerelease: ${{ env.PRE_RELEASE != '' && env.PRE_RELEASE != 'false' }}
           files: |
             *.zip
+
+  deploy:
+    needs: release
+    runs-on: ubuntu-latest
+    if: ${{ ! (contains(needs.release.outputs.RELEASE_VERSION, 'beta') || contains(needs.release.outputs.RELEASE_VERSION, 'rc') || contains(needs.release.outputs.RELEASE_VERSION, 'alpha')) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: "source"
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Get Repo Name
+        run: |
+          echo "REPO_NAME=$(echo ${GITHUB_REPOSITORY#$GITHUB_REPOSITORY_OWNER/} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Generate Download Link
+        run: |
+          version=$(jq -r '.version' source/package.json)
+          repo_url="${{ github.server_url }}/${{ github.repository }}"
+          echo "DOWNLOAD_URL=${repo_url}/releases/download/${version}/${{ env.REPO_NAME }}.zip" >> $GITHUB_ENV
+
+      - name: Make dist directory
+        id: make-dist
+        run: |
+          mkdir -p dist
+
+      - name: Generate Plugin Manifest
+        run: |
+          template=$(cat source/.github/template/manifest.json)
+          version=$(jq -r '.version' source/package.json)
+          download_url="${{ env.DOWNLOAD_URL }}"
+          requires=$(jq -r '.data.wordpress' source/composer.json)
+          tested=$(jq -r '.data.tested' source/composer.json)
+          requires_php=$(jq -r '.require.php' source/composer.json)
+          updated_date=$(date +"%Y-%m-%d %H:%M:%S")
+          changelog=$(cat source/CHANGELOG.md)
+
+          manifest=$(echo "$template" | jq \
+            --arg version "$version" \
+            --arg download_url "$download_url" \
+            --arg requires "$requires" \
+            --arg tested "$tested" \
+            --arg requires_php "$requires_php" \
+            --arg updated_date "$updated_date" \
+            --arg changelog "$changelog" \
+            '.version = $version |
+             .download_url = $download_url |
+             .requires = $requires |
+             .tested = $tested |
+             .requires_php = $requires_php |
+             .last_updated = $updated_date |
+             .sections.changelog = $changelog')
+
+          echo "$manifest" > dist/manifest.json
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "./dist"
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
