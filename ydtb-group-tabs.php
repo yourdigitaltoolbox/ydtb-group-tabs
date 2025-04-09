@@ -27,4 +27,5 @@ if (!file_exists($autoload_path)) {
     });
 }
 require_once $autoload_path;
-use YDTBGroupTabs\Plugin;
+new YDTBGroupTabsRoot\Plugin;
+
