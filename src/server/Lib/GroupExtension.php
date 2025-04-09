@@ -1,7 +1,5 @@
 <?php
 
-namespace YDTBGroupTabs\Lib;
-
 class GroupExtension extends \BP_Group_Extension
 {
     public function __construct()
@@ -24,6 +22,7 @@ class GroupExtension extends \BP_Group_Extension
         );
         parent::init($args);
     }
+
     public function display($group_id = null)
     {
         $group_id = bp_get_group_id();
@@ -46,6 +45,7 @@ class GroupExtension extends \BP_Group_Extension
         }
         echo '</div>';
     }
+    
     public function settings_screen($group_id = null)
     {
         $display_type = groups_get_groupmeta($group_id, 'group_display_type');
@@ -147,7 +147,6 @@ class GroupExtension extends \BP_Group_Extension
         <br><br>
         <?php
     }
-
     public function settings_screen_save($group_id = null)
     {
         $display_type = isset($_POST['group_display_type']) ? sanitize_text_field($_POST['group_display_type']) : 'shortcode';
@@ -168,7 +167,6 @@ class GroupExtension extends \BP_Group_Extension
     {
         return defined('ELEMENTOR_PRO_VERSION');
     }
-
 
     private function get_saved_sections()
     {
@@ -198,10 +196,4 @@ class GroupExtension extends \BP_Group_Extension
         return $saved_sections;
     }
 
-    public static function register()
-    {
-        if (bp_is_active('groups')) {
-            bp_register_group_extension(__CLASS__);
-        }
-    }
 }
