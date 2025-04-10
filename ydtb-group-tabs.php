@@ -6,7 +6,7 @@
  * Author: Your Digital Toolbox
  * Author URI: https://yourdigitaltoolbox.com
  * Description: A simple plugin to create tab groups in WordPress.
- * Version: 0.0.6 
+ * Version: 0.0.7 
  * Text Domain: ydtb-group-tabs
  * Domain Path: /languages  
  * License: GPL2

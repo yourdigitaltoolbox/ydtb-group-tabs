@@ -1,6 +1,6 @@
 {
     "name": "ydtb-group-tabs",
-    "version": "0.0.6",
+    "version": "0.0.7",
     "license": "GPL-2.0",
     "private": true,
     "description": "Addition of group tabs to BuddyBoss Groups",
