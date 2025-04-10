@@ -26,9 +26,17 @@ permissions:
   pages: write
   id-token: write
 
+env:
+  RELEASE_VERSION: ""
+  REPO_NAME: ""
+
 jobs:
   release:
     runs-on: ubuntu-latest
+
+    outputs:
+      RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
+      REPO_NAME: ${{ env.REPO_NAME }}
 
     steps:
       - name: Checkout
@@ -79,6 +87,13 @@ jobs:
         run: |
           cd release
           echo "RELEASE_VERSION=$(bun release-it ${{env.BUMP_LEVEL}} ${{env.PRE_RELEASE}} ${{env.PRE_RELEASE_ID}} --release-version)" >> $GITHUB_ENV
+          echo "RELEASE_VERSION=${{ env.RELEASE_VERSION }}"
+        env:
+          RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
+
+      - name: Debug Release Version
+        run: |
+          echo "RELEASE_VERSION=${{ env.RELEASE_VERSION }}"
 
       - name: Bump The Version
         id: bump_version
@@ -94,8 +109,12 @@ jobs:
           echo "${{ env.BUMP_OUTPUT }}"
 
       - name: Set Repo Name
+        id: set_repo_name
         run: |
           echo "REPO_NAME=$(echo ${GITHUB_REPOSITORY#$GITHUB_REPOSITORY_OWNER/} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          echo "REPO_NAME=${{ env.REPO_NAME }}"
+        env:
+          REPO_NAME: ${{ env.REPO_NAME }}
 
       - name: Prepare Release
         run: |
@@ -124,7 +143,7 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Release ${{ steps.capture_version.outputs.RELEASE_VERSION }}
+          name: Release ${{ steps.capture_release_version.outputs.RELEASE_VERSION }}
           token: ${{ secrets.PAT_TOKEN }}
           tag_name: ${{ env.RELEASE_VERSION }}
           prerelease: ${{ env.PRE_RELEASE != '' && env.PRE_RELEASE != 'false' }}
@@ -145,15 +164,15 @@ jobs:
       - name: Setup bun
         uses: oven-sh/setup-bun@v2
 
-      - name: Get Repo Name
+      - name: Debug Version
         run: |
-          echo "REPO_NAME=$(echo ${GITHUB_REPOSITORY#$GITHUB_REPOSITORY_OWNER/} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          echo "RELEASE_VERSION=${{ needs.release.outputs.RELEASE_VERSION }}"
+          echo "REPO_NAME=${{ needs.release.outputs.REPO_NAME }}"
 
       - name: Generate Download Link
         run: |
-          version=$(jq -r '.version' source/package.json)
           repo_url="${{ github.server_url }}/${{ github.repository }}"
-          echo "DOWNLOAD_URL=${repo_url}/releases/download/${version}/${{ env.REPO_NAME }}.zip" >> $GITHUB_ENV
+          echo "DOWNLOAD_URL=${repo_url}/releases/download/${{ needs.release.outputs.RELEASE_VERSION }}/${{ needs.release.outputs.REPO_NAME }}.zip" >> $GITHUB_ENV
 
       - name: Make dist directory
         id: make-dist
@@ -163,7 +182,7 @@ jobs:
       - name: Generate Plugin Manifest
         run: |
           template=$(cat source/.github/template/manifest.json)
-          version=$(jq -r '.version' source/package.json)
+          version="${{ needs.release.outputs.RELEASE_VERSION }}"
           download_url="${{ env.DOWNLOAD_URL }}"
           requires=$(jq -r '.data.wordpress' source/composer.json)
           tested=$(jq -r '.data.tested' source/composer.json)
@@ -180,14 +199,14 @@ jobs:
             --arg updated_date "$updated_date" \
             --arg changelog "$changelog" \
             '.version = $version |
-             .download_url = $download_url |
-             .requires = $requires |
-             .tested = $tested |
-             .requires_php = $requires_php |
-             .last_updated = $updated_date |
-             .sections.changelog = $changelog')
+              .download_url = $download_url |
+              .requires = $requires |
+              .tested = $tested |
+              .requires_php = $requires_php |
+              .last_updated = $updated_date |
+              .sections.changelog = $changelog')
 
-          echo "$manifest" > dist/manifest.json
+              echo "$manifest" > dist/manifest.json
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
