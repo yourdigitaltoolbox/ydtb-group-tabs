@@ -41,23 +41,29 @@ class GroupExtension extends \BP_Group_Extension
             $group_link = $bp->root_domain . '/' . bp_get_groups_root_slug() . '/' . $bp->groups->current_group->slug . '/';
             $user_access = $bp->groups->current_group->user_has_access;
 
+            global $bp;
+
             foreach ($tabs_data as $tab) {
                 // Check visibility
                 if (!$this->user_has_tab_access($tab['visibility'])) {
                     continue;
                 }
 
-                // Add the subnav item
-                bp_core_new_subnav_item(array(
-                    'name' => esc_html($tab['name']),
-                    'slug' => sanitize_title($tab['slug']),
+                // Prepare the subnav item arguments
+                $subnav_args = array(
+                    'name' => isset($tab['name']) ? esc_html($tab['name']) : '',
+                    'slug' => isset($tab['slug']) ? sanitize_title($tab['slug']) : '',
                     'parent_url' => $group_link,
                     'parent_slug' => $bp->groups->current_group->slug,
                     'screen_function' => [$this, 'bp_group_custom'],
-                    'position' => 50,
                     'user_has_access' => $user_access,
-                    'item_css_id' => sanitize_title($tab['slug']),
-                ));
+                    'item_css_id' => isset($tab['slug']) ? sanitize_title($tab['slug']) : '',
+                );
+
+                // Ensure all required fields are set before adding the subnav item
+                if (!empty($subnav_args['name']) && !empty($subnav_args['slug'])) {
+                    bp_core_new_subnav_item($subnav_args);
+                }
             }
         }
     }
@@ -131,7 +137,7 @@ class GroupExtension extends \BP_Group_Extension
                                     <select name="ydtb_tabs[<?php echo $index; ?>][content]">
                                         <option value=""><?php _e('Select a section', 'ydtb-group-tabs'); ?></option>
                                         <?php foreach ($saved_sections as $section_id => $section_title): ?>
-                                            <option value="[elementor-template id=&quot;<?php echo esc_attr($section_id); ?>&quot;]" <?php selected($tab['content'], '[elementor-template id="' . $section_id . '"]'); ?>>
+                                            <option value="<?php echo esc_attr($section_id); ?>" <?php selected($tab['content'], esc_attr($section_id)); ?>>
                                                 <?php echo esc_html($section_title); ?>
                                             </option>
                                         <?php endforeach; ?>
@@ -388,7 +394,7 @@ class GroupExtension extends \BP_Group_Extension
                                 <select name="ydtb_tabs[${index}][content]">
                                     <option value=""><?php _e('Select a section', 'ydtb-group-tabs'); ?></option>
                                     <?php foreach ($saved_sections as $section_id => $section_title): ?>
-                                        <option value="[elementor-template id=&quot;<?php echo esc_attr($section_id); ?>&quot;]">
+                                        <option value="<?php echo esc_attr($section_id); ?>">
                                             <?php echo esc_html($section_title); ?>
                                         </option>
                                     <?php endforeach; ?>
@@ -401,17 +407,10 @@ class GroupExtension extends \BP_Group_Extension
                         `;
                     } else if (e.target.value === 'shortcode') {
                         fieldsContainer.innerHTML = `
-        <label>Shortcode: <input type="text" name="ydtb_tabs[${index}][content]"></label>
-    `;
+                            <label>Shortcode: <input type="text" name="ydtb_tabs[${index}][content]"></label>
+                        `;
                     }
                 }
-            });
-
-            document.addEventListener('DOMContentLoaded', function () {
-                document.querySelectorAll('.tab-type-selector').forEach(function (selector) {
-                    var event = new Event('change', { bubbles: true });
-                    selector.dispatchEvent(event);
-                });
             });
 
             // Open the first tab by default
@@ -526,10 +525,6 @@ class GroupExtension extends \BP_Group_Extension
 
     }
 
-    // public function my_new_group_show_screen_title()
-    // {
-    //     echo 'New Tab Title';
-    // }
 
     public function new_group_tab_show_screen_content()
     {
@@ -567,19 +562,10 @@ class GroupExtension extends \BP_Group_Extension
                 break;
 
             case 'saved_section':
-                // Render the Elementor section using get_builder_content_for_display
-                if (!empty($current_tab['content'])) {
-                    $section_id = intval(str_replace('[elementor-template id="', '', rtrim($current_tab['content'], '"]')));
-                    if ($section_id) {
-                        $content = \Elementor\Plugin::instance()->frontend->get_builder_content_for_display($section_id);
-                        if (!empty($content)) {
-                            echo $content;
-                        } else {
-                            echo '<p>' . __('Invalid or missing Elementor section.', 'ydtb-group-tabs') . '</p>';
-                        }
-                    } else {
-                        echo '<p>' . __('Invalid section ID.', 'ydtb-group-tabs') . '</p>';
-                    }
+                // Render the Elementor section using the post ID
+                if (!empty($current_tab['content']) && $this->is_elementor_active()) {
+                    $section_id = intval($current_tab['content']);
+                    echo Elementor\Plugin::instance()->frontend->get_builder_content_for_display($section_id);
                 } else {
                     echo '<p>' . __('No section ID provided.', 'ydtb-group-tabs') . '</p>';
                 }
