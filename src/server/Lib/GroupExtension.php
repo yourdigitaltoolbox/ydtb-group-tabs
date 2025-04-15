@@ -14,7 +14,7 @@ class GroupExtension extends \BP_Group_Extension
             'show_tab' => "noone",
             'screens' => array(
                 'edit' => array(
-                    'name' => __('Tab Extension', 'ydtb-group-tabs'),
+                    'name' => __('Custom Tabs', 'ydtb-group-tabs'),
                 ),
                 'create' => array('position' => 10, ),
             ),
@@ -92,7 +92,7 @@ class GroupExtension extends \BP_Group_Extension
         $group_id = isset($group_id) ? $group_id : bp_get_current_group_id();
         $group_meta = groups_get_groupmeta($group_id, 'ydtb_tabs_data', true);
         $group_meta = is_array($group_meta) ? $group_meta : [];
-        $saved_sections = $this->is_elementor_pro_active() ? $this->get_saved_sections() : [];
+        $saved_sections = $this->is_elementor_active() ? $this->get_saved_sections() : [];
         ?>
 
         <div id="ydtb-tabs-settings">
@@ -119,14 +119,14 @@ class GroupExtension extends \BP_Group_Extension
                                 data-index="<?php echo $index; ?>">
                                 <option value="shortcode" <?php selected($tab['type'], 'shortcode'); ?>>Shortcode</option>
                                 <option value="url_redirect" <?php selected($tab['type'], 'url_redirect'); ?>>URL Redirect</option>
-                                <?php if ($this->is_elementor_pro_active()): ?>
+                                <?php if ($this->is_elementor_active()): ?>
                                     <option value="saved_section" <?php selected($tab['type'], 'saved_section'); ?>>Saved Section
                                     </option>
                                 <?php endif; ?>
                             </select>
                         </label>
                         <div class="tab-type-fields" id="fields-<?php echo $index; ?>">
-                            <?php if ($tab['type'] === 'saved_section' && $this->is_elementor_pro_active()): ?>
+                            <?php if ($tab['type'] === 'saved_section' && $this->is_elementor_active()): ?>
                                 <label>Saved Section:
                                     <select name="ydtb_tabs[<?php echo $index; ?>][content]">
                                         <option value=""><?php _e('Select a section', 'ydtb-group-tabs'); ?></option>
@@ -231,7 +231,7 @@ class GroupExtension extends \BP_Group_Extension
                 tabLinks.insertBefore(newTabButton, tabLinks.lastElementChild);
 
                 // Check if Elementor Pro is active
-                var isElementorProActive = <?php echo json_encode($this->is_elementor_pro_active()); ?>;
+                var isElementorProActive = <?php echo json_encode($this->is_elementor_active()); ?>;
 
                 // Create new tab content
                 var newTabContent = document.createElement("div");
@@ -479,9 +479,9 @@ class GroupExtension extends \BP_Group_Extension
         }
     }
 
-    private function is_elementor_pro_active()
+    private function is_elementor_active()
     {
-        return defined('ELEMENTOR_PRO_VERSION');
+        return defined('ELEMENTOR_VERSION');
     }
 
     private function get_saved_sections()
@@ -567,11 +567,21 @@ class GroupExtension extends \BP_Group_Extension
                 break;
 
             case 'saved_section':
-                // Render the Elementor section
-                if (!empty($current_tab['content']) && $this->is_elementor_pro_active()) {
-                    echo do_shortcode($current_tab['content']);
+                // Render the Elementor section using get_builder_content_for_display
+                if (!empty($current_tab['content'])) {
+                    $section_id = intval(str_replace('[elementor-template id="', '', rtrim($current_tab['content'], '"]')));
+                    if ($section_id) {
+                        $content = \Elementor\Plugin::instance()->frontend->get_builder_content_for_display($section_id);
+                        if (!empty($content)) {
+                            echo $content;
+                        } else {
+                            echo '<p>' . __('Invalid or missing Elementor section.', 'ydtb-group-tabs') . '</p>';
+                        }
+                    } else {
+                        echo '<p>' . __('Invalid section ID.', 'ydtb-group-tabs') . '</p>';
+                    }
                 } else {
-                    echo '<p>' . __('Invalid or missing Elementor section.', 'ydtb-group-tabs') . '</p>';
+                    echo '<p>' . __('No section ID provided.', 'ydtb-group-tabs') . '</p>';
                 }
                 break;
 
