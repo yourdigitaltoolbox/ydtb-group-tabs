@@ -100,8 +100,8 @@ jobs:
         continue-on-error: true
         run: |
           cd release
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
           echo "BUMP_OUTPUT=$(bun release-it ${{env.BUMP_LEVEL}} ${{env.PRE_RELEASE}} ${{env.PRE_RELEASE_ID}} --ci)" >> $GITHUB_ENV
 
       - name: Debug The Bump
