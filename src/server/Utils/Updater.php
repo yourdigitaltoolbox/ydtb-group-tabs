@@ -44,7 +44,7 @@ class Updater implements Provider
                 return false;
             }
 
-            set_transient(transient: $this->cache_key, value: $remote, expiration: 60);
+            set_transient(transient: $this->cache_key, value: $remote, expiration: DAY_IN_SECONDS);
         }
 
         $remote = json_decode(wp_remote_retrieve_body($remote));
