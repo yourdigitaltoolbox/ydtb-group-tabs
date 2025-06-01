@@ -58,6 +58,7 @@ class GroupExtension extends \BP_Group_Extension
                     'screen_function' => [$this, 'bp_group_custom'],
                     'user_has_access' => $user_access,
                     'item_css_id' => isset($tab['slug']) ? sanitize_title($tab['slug']) : '',
+                    'position' => isset($tab['position']) ? intval($tab['position']) : 9999, // <-- Add this line
                 );
 
                 // Ensure all required fields are set before adding the subnav item
