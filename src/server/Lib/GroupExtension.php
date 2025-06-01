@@ -145,8 +145,27 @@ class GroupExtension extends \BP_Group_Extension
         <div id="ydtb-tabs-accordion-settings">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
                 <span style="font-size: 1.3em; font-weight: bold;"><?php _e('YDTB Custom Tabs', 'ydtb-group-tabs'); ?></span>
-                <button type="button" id="add-accordion-tab" class="button button-secondary">+
-                    <?php _e('Add Tab', 'ydtb-group-tabs'); ?></button>
+                <div style="margin: 10px 0; padding: 8px; background: #f5f5f5; border: 1px solid #ddd; color: #333;">
+                    <strong>Debug (ydtb_default_tab):</strong>
+                    <?php echo esc_html(groups_get_groupmeta($group_id, 'ydtb_default_tab', true)); ?>
+                </div>
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <label for="ydtb-default-tab-dropdown" style="font-weight:normal;">
+                        <?php _e('Default Tab:', 'ydtb-group-tabs'); ?>
+                    </label>
+                    <select id="ydtb-default-tab-dropdown" name="ydtb_default_tab">
+                        <option value="default" <?php selected(groups_get_groupmeta($group_id, 'ydtb_default_tab', true), 'default'); ?>>
+                            <?php _e('Default', 'ydtb-group-tabs'); ?>
+                        </option>
+                        <?php foreach ($all_tabs as $tab_info): ?>
+                            <option value="<?php echo esc_attr($tab_info['slug']); ?>" <?php selected(groups_get_groupmeta($group_id, 'ydtb_default_tab', true), $tab_info['slug']); ?>>
+                                <?php echo esc_html($tab_info['is_custom'] && !empty($tab_info['custom_tab']['name']) ? $tab_info['custom_tab']['name'] : $tab_info['nav_item']->name); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <button type="button" id="add-accordion-tab" class="button button-secondary">+
+                        <?php _e('Add Tab', 'ydtb-group-tabs'); ?></button>
+                </div>
             </div>
             <div id="accordion-container">
                 <?php foreach ($all_tabs as $tab_info): ?>
@@ -737,6 +756,7 @@ class GroupExtension extends \BP_Group_Extension
                             }, 300);
 
                             // Move the item in the DOM to the correct position
+                            // Find where to insert based on newPos
                             let inserted = false;
                             for (let i = 0; i < allItems.length; i++) {
                                 const other = allItems[i];
@@ -976,6 +996,12 @@ class GroupExtension extends \BP_Group_Extension
     {
         $group_id = isset($group_id) ? $group_id : bp_get_current_group_id();
         $validation_errors = array();
+
+        // Save default tab slug
+        if (isset($_POST['ydtb_default_tab'])) {
+            $default_tab_slug = sanitize_title($_POST['ydtb_default_tab']);
+            groups_update_groupmeta($group_id, 'ydtb_default_tab', $default_tab_slug);
+        }
 
         if (isset($_POST['ydtb_tabs']) && is_array($_POST['ydtb_tabs'])) {
             $tabs_data = array();
