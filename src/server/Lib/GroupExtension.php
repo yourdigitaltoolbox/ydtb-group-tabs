@@ -143,6 +143,11 @@ class GroupExtension extends \BP_Group_Extension
 
         ?>
         <div id="ydtb-tabs-accordion-settings">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <span style="font-size: 1.3em; font-weight: bold;"><?php _e('YDTB Custom Tabs', 'ydtb-group-tabs'); ?></span>
+                <button type="button" id="add-accordion-tab" class="button button-secondary">+
+                    <?php _e('Add Tab', 'ydtb-group-tabs'); ?></button>
+            </div>
             <div id="accordion-container">
                 <?php foreach ($all_tabs as $tab_info): ?>
                     <?php if ($tab_info['is_custom']): ?>
@@ -266,9 +271,6 @@ class GroupExtension extends \BP_Group_Extension
                     <?php endif; ?>
                 <?php endforeach; ?>
             </div>
-            <div style="margin-top: 20px;">
-                <button type="button" id="add-accordion-tab">+ Add Tab</button>
-            </div>
         </div>
 
         <style>
@@ -376,6 +378,10 @@ class GroupExtension extends \BP_Group_Extension
             .move-tab-up:hover,
             .move-tab-down:hover {
                 background: #bdbdbd;
+            }
+
+            #ydtb-tabs-accordion-settings>div[style*="display: flex"] button {
+                min-width: 120px;
             }
         </style>
 
