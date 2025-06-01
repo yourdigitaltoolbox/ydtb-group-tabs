@@ -145,24 +145,23 @@ class GroupExtension extends \BP_Group_Extension
         <div id="ydtb-tabs-accordion-settings">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
                 <span style="font-size: 1.3em; font-weight: bold;"><?php _e('YDTB Custom Tabs', 'ydtb-group-tabs'); ?></span>
-                <div style="margin: 10px 0; padding: 8px; background: #f5f5f5; border: 1px solid #ddd; color: #333;">
-                    <strong>Debug (ydtb_default_tab):</strong>
-                    <?php echo esc_html(groups_get_groupmeta($group_id, 'ydtb_default_tab', true)); ?>
-                </div>
                 <div style="display: flex; align-items: center; gap: 16px;">
-                    <label for="ydtb-default-tab-dropdown" style="font-weight:normal;">
-                        <?php _e('Default Tab:', 'ydtb-group-tabs'); ?>
-                    </label>
-                    <select id="ydtb-default-tab-dropdown" name="ydtb_default_tab">
-                        <option value="default" <?php selected(groups_get_groupmeta($group_id, 'ydtb_default_tab', true), 'default'); ?>>
-                            <?php _e('Default', 'ydtb-group-tabs'); ?>
-                        </option>
-                        <?php foreach ($all_tabs as $tab_info): ?>
-                            <option value="<?php echo esc_attr($tab_info['slug']); ?>" <?php selected(groups_get_groupmeta($group_id, 'ydtb_default_tab', true), $tab_info['slug']); ?>>
-                                <?php echo esc_html($tab_info['is_custom'] && !empty($tab_info['custom_tab']['name']) ? $tab_info['custom_tab']['name'] : $tab_info['nav_item']->name); ?>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label for="ydtb-default-tab-dropdown"
+                            style="font-weight:normal; white-space: nowrap; margin-bottom: 0; display: flex;">
+                            <?php _e('Default Tab:', 'ydtb-group-tabs'); ?>
+                        </label>
+                        <select id="ydtb-default-tab-dropdown" name="ydtb_default_tab" style="margin-bottom: 0;">
+                            <option value="default" <?php selected(groups_get_groupmeta($group_id, 'ydtb_default_tab', true), 'default'); ?>>
+                                <?php _e('Default', 'ydtb-group-tabs'); ?>
                             </option>
-                        <?php endforeach; ?>
-                    </select>
+                            <?php foreach ($all_tabs as $tab_info): ?>
+                                <option value="<?php echo esc_attr($tab_info['slug']); ?>" <?php selected(groups_get_groupmeta($group_id, 'ydtb_default_tab', true), $tab_info['slug']); ?>>
+                                    <?php echo esc_html($tab_info['is_custom'] && !empty($tab_info['custom_tab']['name']) ? $tab_info['custom_tab']['name'] : $tab_info['nav_item']->name); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                     <button type="button" id="add-accordion-tab" class="button button-secondary">+
                         <?php _e('Add Tab', 'ydtb-group-tabs'); ?></button>
                 </div>
