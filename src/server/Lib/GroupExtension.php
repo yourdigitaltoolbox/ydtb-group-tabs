@@ -161,12 +161,6 @@ class GroupExtension extends \BP_Group_Extension
                                     <span class="accordion-title" style="flex:1 1 auto; text-align:left;">
                                         <?php echo esc_html($tab['name']); ?>
                                     </span>
-                                    <span style="margin-left:8px; color:#888;">
-                                        - <?php echo esc_html($tab['slug']); ?>
-                                    </span>
-                                    <span style="flex:0 0 auto; text-align:right; font-weight:bold; margin-left:auto;">
-                                        <?php echo esc_html($tab_info['position']); ?>
-                                    </span>
                                     <span class="move-tab-buttons">
                                         <button type="button" class="move-tab-up"
                                             title="<?php esc_attr_e('Move Up', 'ydtb-group-tabs'); ?>">&#8593;</button>
@@ -259,11 +253,7 @@ class GroupExtension extends \BP_Group_Extension
                             <div class="accordion-header-row" tabindex="0" aria-expanded="false" style="cursor:default;">
                                 <div style="display:flex; width:100%; align-items:center;">
                                     <span style="flex:1 1 auto; text-align:left;">
-                                        <?php echo esc_html($tab_info['nav_item']->name); ?> -
-                                        <?php echo esc_html($tab_info['slug']); ?>
-                                    </span>
-                                    <span style="flex:0 0 auto; text-align:right; font-weight:bold;">
-                                        <?php echo esc_html($tab_info['position']); ?>
+                                        <?php echo esc_html($tab_info['nav_item']->name); ?>
                                     </span>
                                 </div>
                             </div>
@@ -600,7 +590,6 @@ class GroupExtension extends \BP_Group_Extension
                 item.innerHTML = `
                     <div class="accordion-header-row" tabindex="0" aria-expanded="false">
                         <span class="accordion-title" style="flex:1 1 auto; text-align:left;">New Tab</span>
-                        <span style="margin-left:8px; color:#888;">- new-tab</span>
                         <span style="flex:0 0 auto; text-align:right; font-weight:bold; margin-left:auto;">${newPos}</span>
                         <span class="move-tab-buttons">
                             <button type="button" class="move-tab-up" title="<?php esc_attr_e('Move Up', 'ydtb-group-tabs'); ?>">&#8593;</button>
@@ -776,6 +765,7 @@ class GroupExtension extends \BP_Group_Extension
                             const targetPosInput = target.el.querySelector('.tab-position-input');
                             const headerPosA = item.querySelector('span[style*="font-weight:bold"]');
                             const headerPosB = target.el.querySelector('span[style*="font-weight:bold"]');
+                            // Swap values
                             const temp = posInput.value;
                             posInput.value = targetPosInput.value;
                             targetPosInput.value = temp;
@@ -784,7 +774,9 @@ class GroupExtension extends \BP_Group_Extension
                                 headerPosA.textContent = headerPosB.textContent;
                                 headerPosB.textContent = tempText;
                             }
+                            // Animate swap
                             animateSwap(item, target.el);
+                            // Swap DOM order
                             if (isUp) {
                                 container.insertBefore(item, target.el);
                             } else {
