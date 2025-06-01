@@ -104,102 +104,143 @@ class GroupExtension extends \BP_Group_Extension
         $current_group_slug = $bp->groups->current_group->slug;
         $group_nav = $bp->groups->nav->get();
 
-        $filtered_nav_items = [];
+        // Build a lookup for custom tabs by slug for easy matching
+        $custom_tabs_by_slug = [];
+        foreach ($group_meta as $idx => $tab) {
+            if (!empty($tab['slug'])) {
+                $custom_tabs_by_slug[sanitize_title($tab['slug'])] = ['tab' => $tab, 'index' => $idx];
+            }
+        }
+
+        // Prepare a combined list of nav items with info about whether they're custom
+        $all_tabs = [];
         if (is_array($group_nav)) {
             foreach ($group_nav as $key => $nav_item) {
                 if (preg_match('/^' . preg_quote($current_group_slug, '/') . '\/[^\/]+$/', $key)) {
-                    $filtered_nav_items[$key] = $nav_item;
+                    $slug = basename($key);
+                    $is_custom = isset($custom_tabs_by_slug[$slug]);
+                    $all_tabs[] = [
+                        'is_custom' => $is_custom,
+                        'slug' => $slug,
+                        'nav_item' => $nav_item,
+                        'custom_tab' => $is_custom ? $custom_tabs_by_slug[$slug]['tab'] : null,
+                        'custom_index' => $is_custom ? $custom_tabs_by_slug[$slug]['index'] : null,
+                        'position' => isset($nav_item->position) ? intval($nav_item->position) : 9999,
+                    ];
                 }
             }
         }
 
-        // var_dump(highlight_string("<?\n" . var_export($filtered_nav_items, true) . ";\n ?>"));
+        // Sort by position
+        usort($all_tabs, function ($a, $b) {
+            return $a['position'] <=> $b['position'];
+        });
 
         ?>
-
         <div id="ydtb-tabs-accordion-settings">
             <div id="accordion-container">
-                <?php foreach ($group_meta as $index => $tab): ?>
-                    <div class="accordion-item">
-                        <div class="accordion-header-row" tabindex="0" aria-expanded="false">
-                            <span class="accordion-title"><?php echo esc_html($tab['name']); ?></span>
-                            <span class="chevron">&#9654;</span>
-                            <button type="button" class="remove-accordion-tab"
-                                title="<?php esc_attr_e('Remove Tab', 'ydtb-group-tabs'); ?>">
-                                <svg width="18" height="18" viewBox="0 0 20 20" fill="white" aria-hidden="true" focusable="false">
-                                    <rect x="3" y="5.5" width="14" height="1.5" rx="0.75" fill="white" />
-                                    <path
-                                        d="M6.5 7.5V15.5M10 7.5V15.5M13.5 7.5V15.5M8.5 3.5H11.5C12.0523 3.5 12.5 3.94772 12.5 4.5V5.5H7.5V4.5C7.5 3.94772 7.94772 3.5 8.5 3.5Z"
-                                        stroke="white" stroke-width="1.5" stroke-linecap="round" />
-                                    <rect x="6.5" y="7.5" width="7" height="8" rx="1" fill="white" stroke="white"
-                                        stroke-width="1" />
-                                </svg>
-                            </button>
-                        </div>
-                        <div class="accordion-panel" style="display: none;">
-                            <label>Name: <input type="text" name="ydtb_tabs[<?php echo $index; ?>][name]"
-                                    value="<?php echo esc_attr($tab['name']); ?>"></label>
-                            <label>Slug:
-                                <input type="text" name="ydtb_tabs[<?php echo $index; ?>][slug]"
-                                    value="<?php echo esc_attr($tab['slug'] ?? ''); ?>" <?php echo empty($tab['slug']) ? '' : 'data-user-edited="true"'; ?>>
-                            </label>
-                            <label>Type:
-                                <select name="ydtb_tabs[<?php echo $index; ?>][type]" class="tab-type-selector"
-                                    data-index="<?php echo $index; ?>">
-                                    <option value="shortcode" <?php selected($tab['type'], 'shortcode'); ?>>Shortcode</option>
-                                    <option value="url_redirect" <?php selected($tab['type'], 'url_redirect'); ?>>URL Redirect
-                                    </option>
-                                    <?php if ($this->is_elementor_active()): ?>
-                                        <option value="saved_section" <?php selected($tab['type'], 'saved_section'); ?>>Saved Section
-                                        </option>
-                                    <?php endif; ?>
-                                </select>
-                            </label>
-                            <div class="tab-type-fields" id="fields-<?php echo $index; ?>">
-                                <?php if ($tab['type'] === 'saved_section' && $this->is_elementor_active()): ?>
-                                    <label>Saved Section:
-                                        <select name="ydtb_tabs[<?php echo $index; ?>][content]">
-                                            <option value=""><?php _e('Select a section', 'ydtb-group-tabs'); ?></option>
-                                            <?php foreach ($saved_sections as $section_id => $section_title): ?>
-                                                <option value="<?php echo esc_attr($section_id); ?>" <?php selected($tab['content'], esc_attr($section_id)); ?>>
-                                                    <?php echo esc_html($section_title); ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </label>
-                                <?php elseif ($tab['type'] === 'url_redirect'): ?>
-                                    <label>Redirect URL: <input type="text" name="ydtb_tabs[<?php echo $index; ?>][content]"
-                                            value="<?php echo esc_attr($tab['content']); ?>"></label>
-                                <?php elseif ($tab['type'] === 'shortcode'): ?>
-                                    <label>Shortcode:
-                                        <input type="text" name="ydtb_tabs[<?php echo $index; ?>][content]"
-                                            value="<?php echo esc_attr($tab['content']); ?>">
-                                    </label>
-                                <?php endif; ?>
+                <?php foreach ($all_tabs as $tab_info): ?>
+                    <?php if ($tab_info['is_custom']): ?>
+                        <?php
+                        $tab = $tab_info['custom_tab'];
+                        $index = $tab_info['custom_index'];
+                        ?>
+                        <div class="accordion-item">
+                            <div class="accordion-header-row" tabindex="0" aria-expanded="false">
+                                <span class="accordion-title"><?php echo esc_html($tab['name']); ?></span>
+                                <span class="chevron">&#9654;</span>
+                                <button type="button" class="remove-accordion-tab"
+                                    title="<?php esc_attr_e('Remove Tab', 'ydtb-group-tabs'); ?>">
+                                    <!-- SVG as before -->
+                                    <svg width="18" height="18" viewBox="0 0 20 20" fill="white" aria-hidden="true" focusable="false">
+                                        <rect x="3" y="5.5" width="14" height="1.5" rx="0.75" fill="white" />
+                                        <path
+                                            d="M6.5 7.5V15.5M10 7.5V15.5M13.5 7.5V15.5M8.5 3.5H11.5C12.0523 3.5 12.5 3.94772 12.5 4.5V5.5H7.5V4.5C7.5 3.94772 7.94772 3.5 8.5 3.5Z"
+                                            stroke="white" stroke-width="1.5" stroke-linecap="round" />
+                                        <rect x="6.5" y="7.5" width="7" height="8" rx="1" fill="white" stroke="white"
+                                            stroke-width="1" />
+                                    </svg>
+                                </button>
                             </div>
-                            <br>
-                            <p><?php _e('Set who can see this tab.', 'ydtb-group-tabs'); ?></p>
-                            <?php
-                            $visibility_options = array(
-                                'anyone' => __('Anyone ( Public )', 'ydtb-group-tabs'),
-                                'loggedin' => __('Logged In Users', 'ydtb-group-tabs'),
-                                'member' => __('Group Members', 'ydtb-group-tabs'),
-                                'mod' => __('Group Moderators', 'ydtb-group-tabs'),
-                                'admin' => __('Group Admins', 'ydtb-group-tabs'),
-                                'noone' => __('No One', 'ydtb-group-tabs'),
-                            );
-                            $current_visibility = isset($tab['visibility']) ? $tab['visibility'] : 'anyone';
-                            ?>
-                            <select name="ydtb_tabs[<?php echo $index; ?>][visibility]" style="width: 100%;">
-                                <?php foreach ($visibility_options as $value => $label): ?>
-                                    <option value="<?php echo esc_attr($value); ?>" <?php selected($current_visibility, $value); ?>>
-                                        <?php echo esc_html($label); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <br><br>
+                            <div class="accordion-panel" style="display: none;">
+                                <label>Name: <input type="text" name="ydtb_tabs[<?php echo $index; ?>][name]"
+                                        value="<?php echo esc_attr($tab['name']); ?>"></label>
+                                <label>Slug:
+                                    <input type="text" name="ydtb_tabs[<?php echo $index; ?>][slug]"
+                                        value="<?php echo esc_attr($tab['slug'] ?? ''); ?>" <?php echo empty($tab['slug']) ? '' : 'data-user-edited="true"'; ?>>
+                                </label>
+                                <label>Type:
+                                    <select name="ydtb_tabs[<?php echo $index; ?>][type]" class="tab-type-selector"
+                                        data-index="<?php echo $index; ?>">
+                                        <option value="shortcode" <?php selected($tab['type'], 'shortcode'); ?>>Shortcode</option>
+                                        <option value="url_redirect" <?php selected($tab['type'], 'url_redirect'); ?>>URL Redirect
+                                        </option>
+                                        <?php if ($this->is_elementor_active()): ?>
+                                            <option value="saved_section" <?php selected($tab['type'], 'saved_section'); ?>>Saved Section
+                                            </option>
+                                        <?php endif; ?>
+                                    </select>
+                                </label>
+                                <div class="tab-type-fields" id="fields-<?php echo $index; ?>">
+                                    <?php if ($tab['type'] === 'saved_section' && $this->is_elementor_active()): ?>
+                                        <label>Saved Section:
+                                            <select name="ydtb_tabs[<?php echo $index; ?>][content]">
+                                                <option value=""><?php _e('Select a section', 'ydtb-group-tabs'); ?></option>
+                                                <?php foreach ($saved_sections as $section_id => $section_title): ?>
+                                                    <option value="<?php echo esc_attr($section_id); ?>" <?php selected($tab['content'], esc_attr($section_id)); ?>>
+                                                        <?php echo esc_html($section_title); ?>
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </label>
+                                    <?php elseif ($tab['type'] === 'url_redirect'): ?>
+                                        <label>Redirect URL: <input type="text" name="ydtb_tabs[<?php echo $index; ?>][content]"
+                                                value="<?php echo esc_attr($tab['content']); ?>"></label>
+                                    <?php elseif ($tab['type'] === 'shortcode'): ?>
+                                        <label>Shortcode:
+                                            <input type="text" name="ydtb_tabs[<?php echo $index; ?>][content]"
+                                                value="<?php echo esc_attr($tab['content']); ?>">
+                                        </label>
+                                    <?php endif; ?>
+                                </div>
+                                <br>
+                                <p><?php _e('Set who can see this tab.', 'ydtb-group-tabs'); ?></p>
+                                <?php
+                                $visibility_options = array(
+                                    'anyone' => __('Anyone ( Public )', 'ydtb-group-tabs'),
+                                    'loggedin' => __('Logged In Users', 'ydtb-group-tabs'),
+                                    'member' => __('Group Members', 'ydtb-group-tabs'),
+                                    'mod' => __('Group Moderators', 'ydtb-group-tabs'),
+                                    'admin' => __('Group Admins', 'ydtb-group-tabs'),
+                                    'noone' => __('No One', 'ydtb-group-tabs'),
+                                );
+                                $current_visibility = isset($tab['visibility']) ? $tab['visibility'] : 'anyone';
+                                ?>
+                                <select name="ydtb_tabs[<?php echo $index; ?>][visibility]" style="width: 100%;">
+                                    <?php foreach ($visibility_options as $value => $label): ?>
+                                        <option value="<?php echo esc_attr($value); ?>" <?php selected($current_visibility, $value); ?>>
+                                            <?php echo esc_html($label); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <br><br>
+                            </div>
                         </div>
-                    </div>
+                    <?php else: ?>
+                        <div class="accordion-item">
+                            <div class="accordion-header-row" tabindex="0" aria-expanded="false" style="cursor:default;">
+                                <span class="accordion-title"><?php echo esc_html($tab_info['nav_item']->name); ?></span>
+                            </div>
+                            <div class="accordion-panel" style="display: block;">
+                                <p>
+                                    <strong><?php _e('Slug:', 'ydtb-group-tabs'); ?></strong>
+                                    <?php echo esc_html($tab_info['slug']); ?><br>
+                                    <strong><?php _e('Position:', 'ydtb-group-tabs'); ?></strong>
+                                    <?php echo esc_html($tab_info['position']); ?>
+                                </p>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                 <?php endforeach; ?>
             </div>
             <div style="margin-top: 20px;">
