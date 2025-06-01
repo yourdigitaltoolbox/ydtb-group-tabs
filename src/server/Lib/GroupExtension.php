@@ -147,20 +147,36 @@ class GroupExtension extends \BP_Group_Extension
                         ?>
                         <div class="accordion-item">
                             <div class="accordion-header-row" tabindex="0" aria-expanded="false">
-                                <span class="accordion-title"><?php echo esc_html($tab['name']); ?></span>
-                                <span class="chevron">&#9654;</span>
-                                <button type="button" class="remove-accordion-tab"
-                                    title="<?php esc_attr_e('Remove Tab', 'ydtb-group-tabs'); ?>">
-                                    <!-- SVG as before -->
-                                    <svg width="18" height="18" viewBox="0 0 20 20" fill="white" aria-hidden="true" focusable="false">
-                                        <rect x="3" y="5.5" width="14" height="1.5" rx="0.75" fill="white" />
-                                        <path
-                                            d="M6.5 7.5V15.5M10 7.5V15.5M13.5 7.5V15.5M8.5 3.5H11.5C12.0523 3.5 12.5 3.94772 12.5 4.5V5.5H7.5V4.5C7.5 3.94772 7.94772 3.5 8.5 3.5Z"
-                                            stroke="white" stroke-width="1.5" stroke-linecap="round" />
-                                        <rect x="6.5" y="7.5" width="7" height="8" rx="1" fill="white" stroke="white"
-                                            stroke-width="1" />
-                                    </svg>
-                                </button>
+                                <div style="display:flex; width:100%; align-items:center;">
+                                    <span class="accordion-title" style="flex:1 1 auto; text-align:left;">
+                                        <?php echo esc_html($tab['name']); ?>
+                                    </span>
+                                    <span style="margin-left:8px; color:#888;">
+                                        - <?php echo esc_html($tab['slug']); ?>
+                                    </span>
+                                    <span style="flex:0 0 auto; text-align:right; font-weight:bold; margin-left:auto;">
+                                        <?php echo esc_html($tab_info['position']); ?>
+                                    </span>
+                                    <span class="move-tab-buttons">
+                                        <button type="button" class="move-tab-up"
+                                            title="<?php esc_attr_e('Move Up', 'ydtb-group-tabs'); ?>">&#8593;</button>
+                                        <button type="button" class="move-tab-down"
+                                            title="<?php esc_attr_e('Move Down', 'ydtb-group-tabs'); ?>">&#8595;</button>
+                                    </span>
+                                    <button type="button" class="remove-accordion-tab"
+                                        title="<?php esc_attr_e('Remove Tab', 'ydtb-group-tabs'); ?>">
+                                        <!-- SVG as before -->
+                                        <svg width="18" height="18" viewBox="0 0 20 20" fill="white" aria-hidden="true"
+                                            focusable="false">
+                                            <rect x="3" y="5.5" width="14" height="1.5" rx="0.75" fill="white" />
+                                            <path
+                                                d="M6.5 7.5V15.5M10 7.5V15.5M13.5 7.5V15.5M8.5 3.5H11.5C12.0523 3.5 12.5 3.94772 12.5 4.5V5.5H7.5V4.5C7.5 3.94772 7.94772 3.5 8.5 3.5Z"
+                                                stroke="white" stroke-width="1.5" stroke-linecap="round" />
+                                            <rect x="6.5" y="7.5" width="7" height="8" rx="1" fill="white" stroke="white"
+                                                stroke-width="1" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                             <div class="accordion-panel" style="display: none;">
                                 <label>Name: <input type="text" name="ydtb_tabs[<?php echo $index; ?>][name]"
@@ -224,6 +240,8 @@ class GroupExtension extends \BP_Group_Extension
                                     <?php endforeach; ?>
                                 </select>
                                 <br><br>
+                                <input type="hidden" class="tab-position-input" name="ydtb_tabs[<?php echo $index; ?>][position]"
+                                    value="<?php echo esc_attr($tab_info['position']); ?>">
                             </div>
                         </div>
                     <?php else: ?>
@@ -331,6 +349,29 @@ class GroupExtension extends \BP_Group_Extension
                 background: #fff;
                 border-radius: 0 0 6px 6px;
             }
+
+            .move-tab-buttons {
+                display: flex;
+                gap: 2px;
+                margin-right: 8px;
+            }
+
+            .move-tab-up,
+            .move-tab-down {
+                background: #e0e0e0;
+                border: none;
+                border-radius: 3px;
+                padding: 2px 6px;
+                cursor: pointer;
+                font-size: 14px;
+                line-height: 1;
+                transition: background 0.15s;
+            }
+
+            .move-tab-up:hover,
+            .move-tab-down:hover {
+                background: #bdbdbd;
+            }
         </style>
 
         <script>
@@ -406,6 +447,10 @@ class GroupExtension extends \BP_Group_Extension
                     <div class="accordion-header-row" tabindex="0" aria-expanded="false">
                         <span class="accordion-title">New Tab</span>
                         <span class="chevron">&#9654;</span>
+                        <span class="move-tab-buttons">
+                            <button type="button" class="move-tab-up" title="<?php esc_attr_e('Move Up', 'ydtb-group-tabs'); ?>">&#8593;</button>
+                            <button type="button" class="move-tab-down" title="<?php esc_attr_e('Move Down', 'ydtb-group-tabs'); ?>">&#8595;</button>
+                        </span>
                         <button type="button" class="remove-accordion-tab" title="<?php esc_attr_e('Remove Tab', 'ydtb-group-tabs'); ?>">
                             <svg width="18" height="18" viewBox="0 0 20 20" fill="white" aria-hidden="true" focusable="false">
                                 <rect x="3" y="5.5" width="14" height="1.5" rx="0.75" fill="white"/>
@@ -494,6 +539,55 @@ class GroupExtension extends \BP_Group_Extension
                     selector.dispatchEvent(event);
                 });
             });
+
+            document.querySelectorAll('.move-tab-up, .move-tab-down').forEach(function (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    const isUp = btn.classList.contains('move-tab-up');
+                    const item = btn.closest('.accordion-item');
+                    const container = document.getElementById('accordion-container');
+                    const allItems = Array.from(container.querySelectorAll('.accordion-item'));
+                    const customItems = allItems.filter(i => i.querySelector('.remove-accordion-tab'));
+                    const builtInPositions = allItems
+                        .filter(i => !i.querySelector('.remove-accordion-tab'))
+                        .map(i => parseInt(i.querySelector('span[style*="font-weight:bold"]').textContent, 10));
+                    // Get current tab's position
+                    const positionInput = item.querySelector('.tab-position-input');
+                    let currentPos = parseInt(positionInput.value, 10);
+                    // Find the next available position in the desired direction
+                    let targetPos = currentPos + (isUp ? -1 : 1);
+                    // Find the nearest built-in tab position in the direction
+                    let limit = isUp
+                        ? Math.max(0, ...builtInPositions.filter(p => p < currentPos))
+                        : Math.min(9999, ...builtInPositions.filter(p => p > currentPos));
+                    if (isUp && targetPos <= limit) targetPos = limit + 1;
+                    if (!isUp && targetPos >= limit) targetPos = limit - 1;
+                    // Recursive shift for collisions
+                    function shiftTab(pos, dir) {
+                        const colliding = customItems.find(i => parseInt(i.querySelector('.tab-position-input').value, 10) === pos);
+                        if (colliding) {
+                            shiftTab(pos + dir, dir);
+                            colliding.querySelector('.tab-position-input').value = pos + dir;
+                            // Update the header position number for the shifted tab
+                            const headerPos = colliding.querySelector('span[style*="font-weight:bold"]');
+                            if (headerPos) headerPos.textContent = pos + dir;
+                        }
+                    }
+                    shiftTab(targetPos, isUp ? -1 : 1);
+                    positionInput.value = targetPos;
+                    // Update the header position number for the moved tab
+                    const headerPos = item.querySelector('span[style*="font-weight:bold"]');
+                    if (headerPos) headerPos.textContent = targetPos;
+                    // Optionally, visually reorder the DOM (not required for saving, but nice for UX)
+                    // Resort allItems by their .tab-position-input value
+                    const sorted = allItems.slice().sort((a, b) => {
+                        const aPos = parseInt(a.querySelector('.tab-position-input')?.value || a.querySelector('span[style*="font-weight:bold"]').textContent, 10);
+                        const bPos = parseInt(b.querySelector('.tab-position-input')?.value || b.querySelector('span[style*="font-weight:bold"]').textContent, 10);
+                        return aPos - bPos;
+                    });
+                    sorted.forEach(i => container.appendChild(i));
+                });
+            });
         </script>
         <?php
     }
@@ -511,6 +605,7 @@ class GroupExtension extends \BP_Group_Extension
                 $tab_type = sanitize_text_field($tab['type'] ?? '');
                 $tab_content = $tab['content'] ?? '';
                 $tab_visibility = sanitize_text_field($tab['visibility'] ?? 'anyone');
+                $tab_position = isset($tab['position']) ? intval($tab['position']) : 9999;
 
                 // Validate tab name
                 if (empty($tab_name)) {
@@ -537,6 +632,7 @@ class GroupExtension extends \BP_Group_Extension
                         'type' => $tab_type,
                         'content' => wp_kses_post($tab_content),
                         'visibility' => $tab_visibility,
+                        'tab_position' => $tab_position,
                     );
                 }
             }
