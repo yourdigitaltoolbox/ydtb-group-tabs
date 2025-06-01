@@ -598,45 +598,40 @@ class GroupExtension extends \BP_Group_Extension
                     let newPos = maxPos + 1;
 
                     item.innerHTML = `
-                        <div class="accordion-header-row" tabindex="0" aria-expanded="false">
-                            <span class="accordion-title" style="flex:1 1 auto; text-align:left;">New Tab</span>
-                            <span style="flex:0 0 auto; text-align:right; font-weight:bold; margin-left:auto;">${newPos}</span>
-                            <span class="move-tab-buttons">
-                                <button type="button" class="move-tab-up" title="<?php esc_attr_e('Move Up', 'ydtb-group-tabs'); ?>">&#8593;</button>
-                                <button type="button" class="move-tab-down" title="<?php esc_attr_e('Move Down', 'ydtb-group-tabs'); ?>">&#8595;</button>
-                            </span>
-                            <button type="button" class="remove-accordion-tab" title="<?php esc_attr_e('Remove Tab', 'ydtb-group-tabs'); ?>">
-                                <svg width="18" height="18" viewBox="0 0 20 20" fill="white" aria-hidden="true" focusable="false">
-                                    <rect x="3" y="5.5" width="14" height="1.5" rx="0.75" fill="white"/>
-                                    <path d="M6.5 7.5V15.5M10 7.5V15.5M13.5 7.5V15.5M8.5 3.5H11.5C12.0523 3.5 12.5 3.94772 12.5 4.5V5.5H7.5V4.5C7.5 3.94772 7.94772 3.5 8.5 3.5Z" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-                                    <rect x="6.5" y="7.5" width="7" height="8" rx="1" fill="white" stroke="white" stroke-width="1"/>
-                                </svg>
-                            </button>
-                        </div>
-                        <div class="accordion-panel" style="display: none;">
-                            <label>Name: <input type="text" name="ydtb_tabs[${newIndex}][name]" value="New Tab"></label>
-                            <label>Slug: <input type="text" name="ydtb_tabs[${newIndex}][slug]" value="new-tab"></label>
-                            <label>Type:
-                                <select name="ydtb_tabs[${newIndex}][type]" class="tab-type-selector" data-index="${newIndex}">
-                                    <option value="url_redirect">URL Redirect</option>
-                                    <option value="shortcode">Shortcode</option>
-                                    ${isElementorProActive ? '<option value="saved_section">Saved Section</option>' : ''}
-                                </select>
-                            </label>
-                            <div class="tab-type-fields" id="fields-${newIndex}"></div>
-                            <p><?php _e('Set who can see this tab.', 'ydtb-group-tabs'); ?></p>
-                            <select name="ydtb_tabs[${newIndex}][visibility]" style="width: 100%;">
-                                <option value="anyone"><?php _e('Anyone ( Public )', 'ydtb-group-tabs'); ?></option>
-                                <option value="loggedin"><?php _e('Logged In Users', 'ydtb-group-tabs'); ?></option>
-                                <option value="member"><?php _e('Group Members', 'ydtb-group-tabs'); ?></option>
-                                <option value="mod"><?php _e('Group Moderators', 'ydtb-group-tabs'); ?></option>
-                                <option value="admin"><?php _e('Group Admins', 'ydtb-group-tabs'); ?></option>
-                                <option value="noone"><?php _e('No One', 'ydtb-group-tabs'); ?></option>
-                            </select>
-                            <br><br>
-                            <input type="hidden" class="tab-position-input" name="ydtb_tabs[${newIndex}][position]" value="${newPos}">
-                        </div>
-                    `;
+    <div class="accordion-header-row" tabindex="0" aria-expanded="false">
+        <span class="accordion-title" style="flex:1 1 auto; text-align:left;">New Tab</span>
+        <span class="move-tab-buttons">
+            <button type="button" class="move-tab-up" title="<?php esc_attr_e('Move Up', 'ydtb-group-tabs'); ?>">&#8593;</button>
+            <button type="button" class="move-tab-down" title="<?php esc_attr_e('Move Down', 'ydtb-group-tabs'); ?>">&#8595;</button>
+        </span>
+        <button type="button" class="remove-accordion-tab" title="<?php esc_attr_e('Remove Tab', 'ydtb-group-tabs'); ?>">
+            <!-- SVG ... -->
+        </button>
+    </div>
+    <div class="accordion-panel" style="display: none;">
+        <label>Name: <input type="text" name="ydtb_tabs[${newIndex}][name]" value="New Tab"></label>
+        <label>Slug: <input type="text" name="ydtb_tabs[${newIndex}][slug]" value="new-tab"></label>
+        <label>Type:
+            <select name="ydtb_tabs[${newIndex}][type]" class="tab-type-selector" data-index="${newIndex}">
+                <option value="url_redirect">URL Redirect</option>
+                <option value="shortcode">Shortcode</option>
+                ${isElementorProActive ? '<option value="saved_section">Saved Section</option>' : ''}
+            </select>
+        </label>
+        <div class="tab-type-fields" id="fields-${newIndex}"></div>
+        <p><?php _e('Set who can see this tab.', 'ydtb-group-tabs'); ?></p>
+        <select name="ydtb_tabs[${newIndex}][visibility]" style="width: 100%;">
+            <option value="anyone"><?php _e('Anyone ( Public )', 'ydtb-group-tabs'); ?></option>
+            <option value="loggedin"><?php _e('Logged In Users', 'ydtb-group-tabs'); ?></option>
+            <option value="member"><?php _e('Group Members', 'ydtb-group-tabs'); ?></option>
+            <option value="mod"><?php _e('Group Moderators', 'ydtb-group-tabs'); ?></option>
+            <option value="admin"><?php _e('Group Admins', 'ydtb-group-tabs'); ?></option>
+            <option value="noone"><?php _e('No One', 'ydtb-group-tabs'); ?></option>
+        </select>
+        <br><br>
+        <input type="hidden" class="tab-position-input" name="ydtb_tabs[${newIndex}][position]" value="${newPos}">
+    </div>
+`;
                     container.appendChild(item);
 
                     // Attach change handler and trigger for the new selector
