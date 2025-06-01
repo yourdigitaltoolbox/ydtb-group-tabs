@@ -548,44 +548,72 @@ class GroupExtension extends \BP_Group_Extension
                     const container = document.getElementById('accordion-container');
                     const allItems = Array.from(container.querySelectorAll('.accordion-item'));
                     const customItems = allItems.filter(i => i.querySelector('.remove-accordion-tab'));
-                    const builtInPositions = allItems
-                        .filter(i => !i.querySelector('.remove-accordion-tab'))
-                        .map(i => parseInt(i.querySelector('span[style*="font-weight:bold"]').textContent, 10));
-                    // Get current tab's position
-                    const positionInput = item.querySelector('.tab-position-input');
-                    let currentPos = parseInt(positionInput.value, 10);
-                    // Find the next available position in the desired direction
-                    let targetPos = currentPos + (isUp ? -1 : 1);
-                    // Find the nearest built-in tab position in the direction
-                    let limit = isUp
-                        ? Math.max(0, ...builtInPositions.filter(p => p < currentPos))
-                        : Math.min(9999, ...builtInPositions.filter(p => p > currentPos));
-                    if (isUp && targetPos <= limit) targetPos = limit + 1;
-                    if (!isUp && targetPos >= limit) targetPos = limit - 1;
-                    // Recursive shift for collisions
-                    function shiftTab(pos, dir) {
-                        const colliding = customItems.find(i => parseInt(i.querySelector('.tab-position-input').value, 10) === pos);
-                        if (colliding) {
-                            shiftTab(pos + dir, dir);
-                            colliding.querySelector('.tab-position-input').value = pos + dir;
-                            // Update the header position number for the shifted tab
-                            const headerPos = colliding.querySelector('span[style*="font-weight:bold"]');
-                            if (headerPos) headerPos.textContent = pos + dir;
+                    const staticItems = allItems.filter(i => !i.querySelector('.remove-accordion-tab'));
+
+                    // Get current position
+                    const posInput = item.querySelector('.tab-position-input');
+                    let currentPos = parseInt(posInput.value, 10);
+
+                    // Find all positions
+                    const positions = allItems.map(i => ({
+                        el: i,
+                        pos: parseInt(
+                            i.querySelector('.tab-position-input')
+                                ? i.querySelector('.tab-position-input').value
+                                : i.querySelector('span[style*="font-weight:bold"]').textContent,
+                            10
+                        ),
+                        isCustom: !!i.querySelector('.remove-accordion-tab')
+                    }));
+
+                    // Sort by position
+                    positions.sort((a, b) => a.pos - b.pos);
+
+                    // Find index of current item in sorted list
+                    const idx = positions.findIndex(p => p.el === item);
+
+                    // Find the next item in the desired direction
+                    let targetIdx = isUp ? idx - 1 : idx + 1;
+                    if (targetIdx < 0 || targetIdx >= positions.length) return;
+
+                    const target = positions[targetIdx];
+
+                    if (!target.isCustom) {
+                        // Jump over static tab: set position just below (up) or just above (down) the static tab
+                        let newPos = isUp ? target.pos - 1 : target.pos + 1;
+                        // Make sure we don't collide with another custom tab
+                        while (positions.some(p => p.isCustom && p.pos === newPos)) {
+                            newPos = isUp ? newPos - 1 : newPos + 1;
+                        }
+                        posInput.value = newPos;
+                        // Update header
+                        const headerPos = item.querySelector('span[style*="font-weight:bold"]');
+                        if (headerPos) headerPos.textContent = newPos;
+                    } else {
+                        // Swap with the custom tab
+                        const targetPosInput = target.el.querySelector('.tab-position-input');
+                        const headerPosA = item.querySelector('span[style*="font-weight:bold"]');
+                        const headerPosB = target.el.querySelector('span[style*="font-weight:bold"]');
+                        // Swap values
+                        const temp = posInput.value;
+                        posInput.value = targetPosInput.value;
+                        targetPosInput.value = temp;
+                        if (headerPosA && headerPosB) {
+                            const tempText = headerPosA.textContent;
+                            headerPosA.textContent = headerPosB.textContent;
+                            headerPosB.textContent = tempText;
+                        }
+                        // Swap DOM order
+                        if (isUp) {
+                            container.insertBefore(item, target.el);
+                        } else {
+                            if (target.el.nextSibling) {
+                                container.insertBefore(item, target.el.nextSibling);
+                            } else {
+                                container.appendChild(item);
+                            }
                         }
                     }
-                    shiftTab(targetPos, isUp ? -1 : 1);
-                    positionInput.value = targetPos;
-                    // Update the header position number for the moved tab
-                    const headerPos = item.querySelector('span[style*="font-weight:bold"]');
-                    if (headerPos) headerPos.textContent = targetPos;
-                    // Optionally, visually reorder the DOM (not required for saving, but nice for UX)
-                    // Resort allItems by their .tab-position-input value
-                    const sorted = allItems.slice().sort((a, b) => {
-                        const aPos = parseInt(a.querySelector('.tab-position-input')?.value || a.querySelector('span[style*="font-weight:bold"]').textContent, 10);
-                        const bPos = parseInt(b.querySelector('.tab-position-input')?.value || b.querySelector('span[style*="font-weight:bold"]').textContent, 10);
-                        return aPos - bPos;
-                    });
-                    sorted.forEach(i => container.appendChild(i));
                 });
             });
         </script>
