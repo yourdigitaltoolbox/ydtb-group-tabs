@@ -488,11 +488,24 @@ class GroupExtension extends \BP_Group_Extension
                         }, 300);
                     }
 
-                    if (!target.isCustom) {
-                        let newPos = isUp ? target.pos - 1 : target.pos + 1;
-                        while (positions.some(p => p.isCustom && p.pos === newPos)) {
-                            newPos = isUp ? newPos - 1 : newPos + 1;
+                    // Helper to recursively bump tabs
+                    function bumpTab(pos, dir) {
+                        // Find a custom tab at this position
+                        const bump = positions.find(p => p.isCustom && p.pos === pos);
+                        if (bump) {
+                            bumpTab(pos + dir, dir);
+                            // Update the bumped tab's position
+                            const bumpInput = bump.el.querySelector('.tab-position-input');
+                            bumpInput.value = pos + dir;
+                            const bumpHeader = bump.el.querySelector('span[style*="font-weight:bold"]');
+                            if (bumpHeader) bumpHeader.textContent = pos + dir;
                         }
+                    }
+
+                    if (!target.isCustom) {
+                        // We're crossing a static tab, so bump the next custom tab (if any)
+                        let newPos = isUp ? target.pos - 1 : target.pos + 1;
+                        bumpTab(newPos, isUp ? -1 : 1);
                         posInput.value = newPos;
                         const headerPos = item.querySelector('span[style*="font-weight:bold"]');
                         if (headerPos) headerPos.textContent = newPos;
@@ -706,18 +719,27 @@ class GroupExtension extends \BP_Group_Extension
                             }, 300);
                         }
 
-                        if (!target.isCustom) {
-                            // Jump over static tab: set position just below (up) or just above (down) the static tab
-                            let newPos = isUp ? target.pos - 1 : target.pos + 1;
-                            // Make sure we don't collide with another custom tab
-                            while (positions.some(p => p.isCustom && p.pos === newPos)) {
-                                newPos = isUp ? newPos - 1 : newPos + 1;
+                        // Helper to recursively bump tabs
+                        function bumpTab(pos, dir) {
+                            // Find a custom tab at this position
+                            const bump = positions.find(p => p.isCustom && p.pos === pos);
+                            if (bump) {
+                                bumpTab(pos + dir, dir);
+                                // Update the bumped tab's position
+                                const bumpInput = bump.el.querySelector('.tab-position-input');
+                                bumpInput.value = pos + dir;
+                                const bumpHeader = bump.el.querySelector('span[style*="font-weight:bold"]');
+                                if (bumpHeader) bumpHeader.textContent = pos + dir;
                             }
+                        }
+
+                        if (!target.isCustom) {
+                            // We're crossing a static tab, so bump the next custom tab (if any)
+                            let newPos = isUp ? target.pos - 1 : target.pos + 1;
+                            bumpTab(newPos, isUp ? -1 : 1);
                             posInput.value = newPos;
-                            // Update header
                             const headerPos = item.querySelector('span[style*="font-weight:bold"]');
                             if (headerPos) headerPos.textContent = newPos;
-                            // Animate move
                             item.style.transition = 'background 0.2s';
                             item.style.background = '#ffe082';
                             setTimeout(() => {
@@ -725,7 +747,6 @@ class GroupExtension extends \BP_Group_Extension
                             }, 300);
 
                             // Move the item in the DOM to the correct position
-                            // Find where to insert based on newPos
                             let inserted = false;
                             for (let i = 0; i < allItems.length; i++) {
                                 const other = allItems[i];
@@ -835,18 +856,27 @@ class GroupExtension extends \BP_Group_Extension
                         }, 300);
                     }
 
-                    if (!target.isCustom) {
-                        // Jump over static tab: set position just below (up) or just above (down) the static tab
-                        let newPos = isUp ? target.pos - 1 : target.pos + 1;
-                        // Make sure we don't collide with another custom tab
-                        while (positions.some(p => p.isCustom && p.pos === newPos)) {
-                            newPos = isUp ? newPos - 1 : newPos + 1;
+                    // Helper to recursively bump tabs
+                    function bumpTab(pos, dir) {
+                        // Find a custom tab at this position
+                        const bump = positions.find(p => p.isCustom && p.pos === pos);
+                        if (bump) {
+                            bumpTab(pos + dir, dir);
+                            // Update the bumped tab's position
+                            const bumpInput = bump.el.querySelector('.tab-position-input');
+                            bumpInput.value = pos + dir;
+                            const bumpHeader = bump.el.querySelector('span[style*="font-weight:bold"]');
+                            if (bumpHeader) bumpHeader.textContent = pos + dir;
                         }
+                    }
+
+                    if (!target.isCustom) {
+                        // We're crossing a static tab, so bump the next custom tab (if any)
+                        let newPos = isUp ? target.pos - 1 : target.pos + 1;
+                        bumpTab(newPos, isUp ? -1 : 1);
                         posInput.value = newPos;
-                        // Update header
                         const headerPos = item.querySelector('span[style*="font-weight:bold"]');
                         if (headerPos) headerPos.textContent = newPos;
-                        // Animate move
                         item.style.transition = 'background 0.2s';
                         item.style.background = '#ffe082';
                         setTimeout(() => {
