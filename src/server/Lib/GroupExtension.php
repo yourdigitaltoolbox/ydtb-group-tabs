@@ -438,6 +438,121 @@ class GroupExtension extends \BP_Group_Extension
                     }
                 });
 
+                // Move tab up/down logic (event delegation)
+                container.addEventListener('click', function (e) {
+                    const btn = e.target.closest('.move-tab-up, .move-tab-down');
+                    if (!btn) return;
+                    e.stopPropagation();
+                    const isUp = btn.classList.contains('move-tab-up');
+                    const item = btn.closest('.accordion-item');
+                    const allItems = Array.from(container.querySelectorAll('.accordion-item'));
+                    const customItems = allItems.filter(i => i.querySelector('.remove-accordion-tab'));
+
+                    // Get current position
+                    const posInput = item.querySelector('.tab-position-input');
+                    let currentPos = parseInt(posInput.value, 10);
+
+                    // Find all positions
+                    const positions = allItems.map(i => ({
+                        el: i,
+                        pos: parseInt(
+                            i.querySelector('.tab-position-input')
+                                ? i.querySelector('.tab-position-input').value
+                                : i.querySelector('span[style*="font-weight:bold"]').textContent,
+                            10
+                        ),
+                        isCustom: !!i.querySelector('.remove-accordion-tab')
+                    }));
+
+                    // Sort by position
+                    positions.sort((a, b) => a.pos - b.pos);
+
+                    // Find index of current item in sorted list
+                    const idx = positions.findIndex(p => p.el === item);
+
+                    // Find the next item in the desired direction
+                    let targetIdx = isUp ? idx - 1 : idx + 1;
+                    if (targetIdx < 0 || targetIdx >= positions.length) return;
+
+                    const target = positions[targetIdx];
+
+                    // Helper for animation
+                    function animateSwap(el1, el2) {
+                        el1.style.transition = 'background 0.2s';
+                        el2.style.transition = 'background 0.2s';
+                        el1.style.background = '#ffe082';
+                        el2.style.background = '#ffe082';
+                        setTimeout(() => {
+                            el1.style.background = '';
+                            el2.style.background = '';
+                        }, 300);
+                    }
+
+                    if (!target.isCustom) {
+                        let newPos = isUp ? target.pos - 1 : target.pos + 1;
+                        while (positions.some(p => p.isCustom && p.pos === newPos)) {
+                            newPos = isUp ? newPos - 1 : newPos + 1;
+                        }
+                        posInput.value = newPos;
+                        const headerPos = item.querySelector('span[style*="font-weight:bold"]');
+                        if (headerPos) headerPos.textContent = newPos;
+                        item.style.transition = 'background 0.2s';
+                        item.style.background = '#ffe082';
+                        setTimeout(() => {
+                            item.style.background = '';
+                        }, 300);
+
+                        // Move the item in the DOM to the correct position
+                        let inserted = false;
+                        for (let i = 0; i < allItems.length; i++) {
+                            const other = allItems[i];
+                            if (other === item) continue;
+                            let otherPos = parseInt(
+                                other.querySelector('.tab-position-input')
+                                    ? other.querySelector('.tab-position-input').value
+                                    : other.querySelector('span[style*="font-weight:bold"]').textContent,
+                                10
+                            );
+                            if (isUp && otherPos >= newPos) {
+                                container.insertBefore(item, other);
+                                inserted = true;
+                                break;
+                            }
+                            if (!isUp && otherPos > newPos) {
+                                container.insertBefore(item, other);
+                                inserted = true;
+                                break;
+                            }
+                        }
+                        if (!inserted) {
+                            container.appendChild(item);
+                        }
+                    } else {
+                        // Swap with the custom tab
+                        const targetPosInput = target.el.querySelector('.tab-position-input');
+                        const headerPosA = item.querySelector('span[style*="font-weight:bold"]');
+                        const headerPosB = target.el.querySelector('span[style*="font-weight:bold"]');
+                        const temp = posInput.value;
+                        posInput.value = targetPosInput.value;
+                        targetPosInput.value = temp;
+                        if (headerPosA && headerPosB) {
+                            const tempText = headerPosA.textContent;
+                            headerPosA.textContent = headerPosB.textContent;
+                            headerPosB.textContent = tempText;
+                        }
+                        animateSwap(item, target.el);
+                        if (isUp) {
+                            container.insertBefore(item, target.el);
+                        } else {
+                            if (target.el.nextSibling) {
+                                container.insertBefore(item, target.el.nextSibling);
+                            } else {
+                                container.appendChild(item);
+                            }
+                        }
+                    }
+                });
+
                 // Open the first accordion by default
                 const headerRows = container.querySelectorAll('.accordion-header-row');
                 if (headerRows.length > 0) {
@@ -512,31 +627,6 @@ class GroupExtension extends \BP_Group_Extension
                 `;
                 container.appendChild(item);
 
-                // Re-attach accordion logic
-                var row = item.querySelector('.accordion-header-row');
-                row.addEventListener('click', function (e) {
-                    if (e.target.closest('.remove-accordion-tab')) return;
-                    var headerRows = document.querySelectorAll('.accordion-header-row');
-                    headerRows.forEach((otherRow) => {
-                        const panel = otherRow.parentNode.querySelector('.accordion-panel');
-                        if (otherRow === row) {
-                            const expanded = row.getAttribute('aria-expanded') === 'true';
-                            row.setAttribute('aria-expanded', !expanded);
-                            row.classList.toggle('open', !expanded);
-                            if (panel) panel.style.display = expanded ? 'none' : 'block';
-                        } else {
-                            otherRow.setAttribute('aria-expanded', 'false');
-                            otherRow.classList.remove('open');
-                            if (panel) panel.style.display = 'none';
-                        }
-                    });
-                });
-                row.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        row.click();
-                    }
-                });
                 // Remove tab logic
                 var removeBtn = row.querySelector('.remove-accordion-tab');
                 if (removeBtn) {
@@ -617,13 +707,17 @@ class GroupExtension extends \BP_Group_Extension
                         }
 
                         if (!target.isCustom) {
+                            // Jump over static tab: set position just below (up) or just above (down) the static tab
                             let newPos = isUp ? target.pos - 1 : target.pos + 1;
+                            // Make sure we don't collide with another custom tab
                             while (positions.some(p => p.isCustom && p.pos === newPos)) {
                                 newPos = isUp ? newPos - 1 : newPos + 1;
                             }
                             posInput.value = newPos;
+                            // Update header
                             const headerPos = item.querySelector('span[style*="font-weight:bold"]');
                             if (headerPos) headerPos.textContent = newPos;
+                            // Animate move
                             item.style.transition = 'background 0.2s';
                             item.style.background = '#ffe082';
                             setTimeout(() => {
@@ -631,6 +725,7 @@ class GroupExtension extends \BP_Group_Extension
                             }, 300);
 
                             // Move the item in the DOM to the correct position
+                            // Find where to insert based on newPos
                             let inserted = false;
                             for (let i = 0; i < allItems.length; i++) {
                                 const other = allItems[i];
@@ -656,6 +751,7 @@ class GroupExtension extends \BP_Group_Extension
                                 container.appendChild(item);
                             }
                         } else {
+                            // Swap with the custom tab
                             const targetPosInput = target.el.querySelector('.tab-position-input');
                             const headerPosA = item.querySelector('span[style*="font-weight:bold"]');
                             const headerPosB = target.el.querySelector('span[style*="font-weight:bold"]');
@@ -680,6 +776,14 @@ class GroupExtension extends \BP_Group_Extension
                         }
                     });
                 });
+
+                // After container.appendChild(item);
+                var row = item.querySelector('.accordion-header-row');
+                if (row) {
+                    row.setAttribute('tabindex', '0');
+                    row.focus();
+                    row.click(); // This will trigger the event delegation and open the accordion
+                }
             });
 
             document.querySelectorAll('.move-tab-up, .move-tab-down').forEach(function (btn) {
