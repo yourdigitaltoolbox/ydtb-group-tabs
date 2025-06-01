@@ -443,10 +443,19 @@ class GroupExtension extends \BP_Group_Extension
 
                 var item = document.createElement('div');
                 item.className = 'accordion-item';
+                // Find the next available position (after all current custom tabs)
+                let maxPos = 0;
+                container.querySelectorAll('.tab-position-input').forEach(function (input) {
+                    const val = parseInt(input.value, 10);
+                    if (!isNaN(val) && val > maxPos) maxPos = val;
+                });
+                let newPos = maxPos + 1;
+
                 item.innerHTML = `
                     <div class="accordion-header-row" tabindex="0" aria-expanded="false">
-                        <span class="accordion-title">New Tab</span>
-                        <span class="chevron">&#9654;</span>
+                        <span class="accordion-title" style="flex:1 1 auto; text-align:left;">New Tab</span>
+                        <span style="margin-left:8px; color:#888;">- new-tab</span>
+                        <span style="flex:0 0 auto; text-align:right; font-weight:bold; margin-left:auto;">${newPos}</span>
                         <span class="move-tab-buttons">
                             <button type="button" class="move-tab-up" title="<?php esc_attr_e('Move Up', 'ydtb-group-tabs'); ?>">&#8593;</button>
                             <button type="button" class="move-tab-down" title="<?php esc_attr_e('Move Down', 'ydtb-group-tabs'); ?>">&#8595;</button>
@@ -480,6 +489,7 @@ class GroupExtension extends \BP_Group_Extension
                             <option value="noone"><?php _e('No One', 'ydtb-group-tabs'); ?></option>
                         </select>
                         <br><br>
+                        <input type="hidden" class="tab-position-input" name="ydtb_tabs[${newIndex}][position]" value="${newPos}">
                     </div>
                 `;
                 container.appendChild(item);
@@ -537,6 +547,120 @@ class GroupExtension extends \BP_Group_Extension
                 document.querySelectorAll('.tab-type-selector').forEach(function (selector) {
                     var event = new Event('change', { bubbles: true });
                     selector.dispatchEvent(event);
+                });
+
+                item.querySelectorAll('.move-tab-up, .move-tab-down').forEach(function (btn) {
+                    btn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        const isUp = btn.classList.contains('move-tab-up');
+                        const item = btn.closest('.accordion-item');
+                        const container = document.getElementById('accordion-container');
+                        const allItems = Array.from(container.querySelectorAll('.accordion-item'));
+                        const customItems = allItems.filter(i => i.querySelector('.remove-accordion-tab'));
+
+                        // Get current position
+                        const posInput = item.querySelector('.tab-position-input');
+                        let currentPos = parseInt(posInput.value, 10);
+
+                        // Find all positions
+                        const positions = allItems.map(i => ({
+                            el: i,
+                            pos: parseInt(
+                                i.querySelector('.tab-position-input')
+                                    ? i.querySelector('.tab-position-input').value
+                                    : i.querySelector('span[style*="font-weight:bold"]').textContent,
+                                10
+                            ),
+                            isCustom: !!i.querySelector('.remove-accordion-tab')
+                        }));
+
+                        // Sort by position
+                        positions.sort((a, b) => a.pos - b.pos);
+
+                        // Find index of current item in sorted list
+                        const idx = positions.findIndex(p => p.el === item);
+
+                        // Find the next item in the desired direction
+                        let targetIdx = isUp ? idx - 1 : idx + 1;
+                        if (targetIdx < 0 || targetIdx >= positions.length) return;
+
+                        const target = positions[targetIdx];
+
+                        // Helper for animation
+                        function animateSwap(el1, el2) {
+                            el1.style.transition = 'background 0.2s';
+                            el2.style.transition = 'background 0.2s';
+                            el1.style.background = '#ffe082';
+                            el2.style.background = '#ffe082';
+                            setTimeout(() => {
+                                el1.style.background = '';
+                                el2.style.background = '';
+                            }, 300);
+                        }
+
+                        if (!target.isCustom) {
+                            let newPos = isUp ? target.pos - 1 : target.pos + 1;
+                            while (positions.some(p => p.isCustom && p.pos === newPos)) {
+                                newPos = isUp ? newPos - 1 : newPos + 1;
+                            }
+                            posInput.value = newPos;
+                            const headerPos = item.querySelector('span[style*="font-weight:bold"]');
+                            if (headerPos) headerPos.textContent = newPos;
+                            item.style.transition = 'background 0.2s';
+                            item.style.background = '#ffe082';
+                            setTimeout(() => {
+                                item.style.background = '';
+                            }, 300);
+
+                            // Move the item in the DOM to the correct position
+                            let inserted = false;
+                            for (let i = 0; i < allItems.length; i++) {
+                                const other = allItems[i];
+                                if (other === item) continue;
+                                let otherPos = parseInt(
+                                    other.querySelector('.tab-position-input')
+                                        ? other.querySelector('.tab-position-input').value
+                                        : other.querySelector('span[style*="font-weight:bold"]').textContent,
+                                    10
+                                );
+                                if (isUp && otherPos >= newPos) {
+                                    container.insertBefore(item, other);
+                                    inserted = true;
+                                    break;
+                                }
+                                if (!isUp && otherPos > newPos) {
+                                    container.insertBefore(item, other);
+                                    inserted = true;
+                                    break;
+                                }
+                            }
+                            if (!inserted) {
+                                container.appendChild(item);
+                            }
+                        } else {
+                            const targetPosInput = target.el.querySelector('.tab-position-input');
+                            const headerPosA = item.querySelector('span[style*="font-weight:bold"]');
+                            const headerPosB = target.el.querySelector('span[style*="font-weight:bold"]');
+                            const temp = posInput.value;
+                            posInput.value = targetPosInput.value;
+                            targetPosInput.value = temp;
+                            if (headerPosA && headerPosB) {
+                                const tempText = headerPosA.textContent;
+                                headerPosA.textContent = headerPosB.textContent;
+                                headerPosB.textContent = tempText;
+                            }
+                            animateSwap(item, target.el);
+                            if (isUp) {
+                                container.insertBefore(item, target.el);
+                            } else {
+                                if (target.el.nextSibling) {
+                                    container.insertBefore(item, target.el.nextSibling);
+                                } else {
+                                    container.appendChild(item);
+                                }
+                            }
+                        }
+                    });
                 });
             });
 
