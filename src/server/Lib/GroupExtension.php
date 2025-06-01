@@ -101,89 +101,222 @@ class GroupExtension extends \BP_Group_Extension
         $saved_sections = $this->is_elementor_active() ? $this->get_saved_sections() : [];
         ?>
 
-        <div id="ydtb-tabs-settings">
-            <div class="tab">
+        <div id="ydtb-tabs-accordion-settings">
+            <div id="accordion-container">
                 <?php foreach ($group_meta as $index => $tab): ?>
-                    <button type="button" class="tablinks" onclick="openTab(event, 'tab-<?php echo $index; ?>')">
-                        <?php echo esc_html($tab['name']); ?>
-                    </button>
-                <?php endforeach; ?>
-                <button type="button" class="tablinks" id="new-tab-button" onclick="addNewTab()">+ Add Tab</button>
-            </div>
-            <div style="margin-top: 20px;"></div>
-            <div id="tab-content-container" style="border-radius: 5px; border: 1px solid #ccc; padding: 25px;">
-                <?php foreach ($group_meta as $index => $tab): ?>
-                    <div id="tab-<?php echo $index; ?>" class="tabcontent">
-                        <label>Name: <input type="text" name="ydtb_tabs[<?php echo $index; ?>][name]"
-                                value="<?php echo esc_attr($tab['name']); ?>"></label>
-                        <label>Slug:
-                            <input type="text" name="ydtb_tabs[<?php echo $index; ?>][slug]"
-                                value="<?php echo esc_attr($tab['slug'] ?? ''); ?>" <?php echo empty($tab['slug']) ? '' : 'data-user-edited="true"'; ?>>
-                        </label>
-                        <label>Type:
-                            <select name="ydtb_tabs[<?php echo $index; ?>][type]" class="tab-type-selector"
-                                data-index="<?php echo $index; ?>">
-                                <option value="shortcode" <?php selected($tab['type'], 'shortcode'); ?>>Shortcode</option>
-                                <option value="url_redirect" <?php selected($tab['type'], 'url_redirect'); ?>>URL Redirect</option>
-                                <?php if ($this->is_elementor_active()): ?>
-                                    <option value="saved_section" <?php selected($tab['type'], 'saved_section'); ?>>Saved Section
+                    <div class="accordion-item">
+                        <button type="button" class="accordion-header" aria-expanded="false">
+                            <?php echo esc_html($tab['name']); ?>
+                        </button>
+                        <div class="accordion-panel" style="display: none;">
+                            <label>Name: <input type="text" name="ydtb_tabs[<?php echo $index; ?>][name]"
+                                    value="<?php echo esc_attr($tab['name']); ?>"></label>
+                            <label>Slug:
+                                <input type="text" name="ydtb_tabs[<?php echo $index; ?>][slug]"
+                                    value="<?php echo esc_attr($tab['slug'] ?? ''); ?>" <?php echo empty($tab['slug']) ? '' : 'data-user-edited="true"'; ?>>
+                            </label>
+                            <label>Type:
+                                <select name="ydtb_tabs[<?php echo $index; ?>][type]" class="tab-type-selector"
+                                    data-index="<?php echo $index; ?>">
+                                    <option value="shortcode" <?php selected($tab['type'], 'shortcode'); ?>>Shortcode</option>
+                                    <option value="url_redirect" <?php selected($tab['type'], 'url_redirect'); ?>>URL Redirect
                                     </option>
+                                    <?php if ($this->is_elementor_active()): ?>
+                                        <option value="saved_section" <?php selected($tab['type'], 'saved_section'); ?>>Saved Section
+                                        </option>
+                                    <?php endif; ?>
+                                </select>
+                            </label>
+                            <div class="tab-type-fields" id="fields-<?php echo $index; ?>">
+                                <?php if ($tab['type'] === 'saved_section' && $this->is_elementor_active()): ?>
+                                    <label>Saved Section:
+                                        <select name="ydtb_tabs[<?php echo $index; ?>][content]">
+                                            <option value=""><?php _e('Select a section', 'ydtb-group-tabs'); ?></option>
+                                            <?php foreach ($saved_sections as $section_id => $section_title): ?>
+                                                <option value="<?php echo esc_attr($section_id); ?>" <?php selected($tab['content'], esc_attr($section_id)); ?>>
+                                                    <?php echo esc_html($section_title); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </label>
+                                <?php elseif ($tab['type'] === 'url_redirect'): ?>
+                                    <label>Redirect URL: <input type="text" name="ydtb_tabs[<?php echo $index; ?>][content]"
+                                            value="<?php echo esc_attr($tab['content']); ?>"></label>
+                                <?php elseif ($tab['type'] === 'shortcode'): ?>
+                                    <label>Shortcode:
+                                        <input type="text" name="ydtb_tabs[<?php echo $index; ?>][content]"
+                                            value="<?php echo esc_attr($tab['content']); ?>">
+                                    </label>
                                 <?php endif; ?>
+                            </div>
+                            <br>
+                            <p><?php _e('Set who can see this tab.', 'ydtb-group-tabs'); ?></p>
+                            <?php
+                            $visibility_options = array(
+                                'anyone' => __('Anyone ( Public )', 'ydtb-group-tabs'),
+                                'loggedin' => __('Logged In Users', 'ydtb-group-tabs'),
+                                'member' => __('Group Members', 'ydtb-group-tabs'),
+                                'mod' => __('Group Moderators', 'ydtb-group-tabs'),
+                                'admin' => __('Group Admins', 'ydtb-group-tabs'),
+                                'noone' => __('No One', 'ydtb-group-tabs'),
+                            );
+                            $current_visibility = isset($tab['visibility']) ? $tab['visibility'] : 'anyone';
+                            ?>
+                            <select name="ydtb_tabs[<?php echo $index; ?>][visibility]" style="width: 100%;">
+                                <?php foreach ($visibility_options as $value => $label): ?>
+                                    <option value="<?php echo esc_attr($value); ?>" <?php selected($current_visibility, $value); ?>>
+                                        <?php echo esc_html($label); ?>
+                                    </option>
+                                <?php endforeach; ?>
                             </select>
-                        </label>
-                        <div class="tab-type-fields" id="fields-<?php echo $index; ?>">
-                            <?php if ($tab['type'] === 'saved_section' && $this->is_elementor_active()): ?>
-                                <label>Saved Section:
-                                    <select name="ydtb_tabs[<?php echo $index; ?>][content]">
-                                        <option value=""><?php _e('Select a section', 'ydtb-group-tabs'); ?></option>
-                                        <?php foreach ($saved_sections as $section_id => $section_title): ?>
-                                            <option value="<?php echo esc_attr($section_id); ?>" <?php selected($tab['content'], esc_attr($section_id)); ?>>
-                                                <?php echo esc_html($section_title); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </label>
-                            <?php elseif ($tab['type'] === 'url_redirect'): ?>
-                                <label>Redirect URL: <input type="text" name="ydtb_tabs[<?php echo $index; ?>][content]"
-                                        value="<?php echo esc_attr($tab['content']); ?>"></label>
-                            <?php elseif ($tab['type'] === 'shortcode'): ?>
-                                <label>Shortcode:
-                                    <input type="text" name="ydtb_tabs[<?php echo $index; ?>][content]"
-                                        value="<?php echo esc_attr($tab['content']); ?>">
-                                </label>
-                            <?php endif; ?>
-                        </div>
-                        <br>
-                        <p><?php _e('Set who can see this tab.', 'ydtb-group-tabs'); ?></p>
-                        <?php
-                        $visibility_options = array(
-                            'anyone' => __('Anyone ( Public )', 'ydtb-group-tabs'),
-                            'loggedin' => __('Logged In Users', 'ydtb-group-tabs'),
-                            'member' => __('Group Members', 'ydtb-group-tabs'),
-                            'mod' => __('Group Moderators', 'ydtb-group-tabs'),
-                            'admin' => __('Group Admins', 'ydtb-group-tabs'),
-                            'noone' => __('No One', 'ydtb-group-tabs'),
-                        );
-                        $current_visibility = isset($tab['visibility']) ? $tab['visibility'] : 'anyone';
-                        ?>
-                        <select name="ydtb_tabs[<?php echo $index; ?>][visibility]" style="width: 100%;">
-                            <?php foreach ($visibility_options as $value => $label): ?>
-                                <option value="<?php echo esc_attr($value); ?>" <?php selected($current_visibility, $value); ?>>
-                                    <?php echo esc_html($label); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                        <br><br>
-                        <div style="text-align: right;">
-                            <button type="button" style="background-color: #f44336;" onclick="removeTab(this)">Remove Tab</button>
+                            <br><br>
+                            <div style="text-align: right;">
+                                <button type="button" style="background-color: #f44336;" onclick="removeAccordionTab(this)">Remove
+                                    Tab</button>
+                            </div>
                         </div>
                     </div>
                 <?php endforeach; ?>
             </div>
-            <div style="margin-bottom: 20px;"></div>
+            <div style="margin-top: 20px;">
+                <button type="button" id="add-accordion-tab">+ Add Tab</button>
+            </div>
         </div>
 
+        <style>
+            .accordion-header {
+                width: 100%;
+                text-align: left;
+                padding: 12px 16px;
+                background: #f1f1f1;
+                border: none;
+                outline: none;
+                cursor: pointer;
+                font-size: 16px;
+                border-bottom: 1px solid #ddd;
+                transition: background 0.2s;
+            }
+
+            .accordion-header[aria-expanded="true"] {
+                background: #e2e2e2;
+            }
+
+            .accordion-panel {
+                padding: 16px;
+                border-bottom: 1px solid #ddd;
+                background: #fff;
+            }
+        </style>
+
         <script>
+            // Accordion logic
+            document.addEventListener('DOMContentLoaded', function () {
+                const headers = document.querySelectorAll('.accordion-header');
+                headers.forEach((header, idx) => {
+                    header.addEventListener('click', function () {
+                        headers.forEach((h, i) => {
+                            const panel = h.nextElementSibling;
+                            if (h === header) {
+                                const expanded = h.getAttribute('aria-expanded') === 'true';
+                                h.setAttribute('aria-expanded', !expanded);
+                                panel.style.display = expanded ? 'none' : 'block';
+                            } else {
+                                h.setAttribute('aria-expanded', 'false');
+                                panel.style.display = 'none';
+                            }
+                        });
+                    });
+                });
+                // Open the first accordion by default
+                if (headers.length > 0) {
+                    headers[0].setAttribute('aria-expanded', 'true');
+                    headers[0].nextElementSibling.style.display = 'block';
+                }
+            });
+
+            // Add new accordion tab
+            document.getElementById('add-accordion-tab').addEventListener('click', function () {
+                var container = document.getElementById('accordion-container');
+                var newIndex = container.querySelectorAll('.accordion-item').length;
+                var isElementorProActive = <?php echo json_encode($this->is_elementor_active()); ?>;
+                var savedSections = <?php echo json_encode($saved_sections); ?>;
+                var sectionOptions = '<option value=""><?php _e('Select a section', 'ydtb-group-tabs'); ?></option>';
+                for (var id in savedSections) {
+                    sectionOptions += '<option value="' + id + '">' + savedSections[id] + '</option>';
+                }
+
+                var item = document.createElement('div');
+                item.className = 'accordion-item';
+                item.innerHTML = `
+                    <button type="button" class="accordion-header" aria-expanded="false">New Tab</button>
+                    <div class="accordion-panel" style="display: none;">
+                        <label>Name: <input type="text" name="ydtb_tabs[${newIndex}][name]" value="New Tab"></label>
+                        <label>Slug: <input type="text" name="ydtb_tabs[${newIndex}][slug]" value="new-tab"></label>
+                        <label>Type:
+                            <select name="ydtb_tabs[${newIndex}][type]" class="tab-type-selector" data-index="${newIndex}">
+                                <option value="url_redirect">URL Redirect</option>
+                                <option value="shortcode">Shortcode</option>
+                                ${isElementorProActive ? '<option value="saved_section">Saved Section</option>' : ''}
+                            </select>
+                        </label>
+                        <div class="tab-type-fields" id="fields-${newIndex}"></div>
+                        <p><?php _e('Set who can see this tab.', 'ydtb-group-tabs'); ?></p>
+                        <select name="ydtb_tabs[${newIndex}][visibility]" style="width: 100%;">
+                            <option value="anyone"><?php _e('Anyone ( Public )', 'ydtb-group-tabs'); ?></option>
+                            <option value="loggedin"><?php _e('Logged In Users', 'ydtb-group-tabs'); ?></option>
+                            <option value="member"><?php _e('Group Members', 'ydtb-group-tabs'); ?></option>
+                            <option value="mod"><?php _e('Group Moderators', 'ydtb-group-tabs'); ?></option>
+                            <option value="admin"><?php _e('Group Admins', 'ydtb-group-tabs'); ?></option>
+                            <option value="noone"><?php _e('No One', 'ydtb-group-tabs'); ?></option>
+                        </select>
+                        <br><br>
+                        <div style="text-align: right;">
+                            <button type="button" style="background-color: #f44336;" onclick="removeAccordionTab(this)">Remove Tab</button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(item);
+
+                // Re-attach accordion logic
+                var header = item.querySelector('.accordion-header');
+                header.addEventListener('click', function () {
+                    var headers = document.querySelectorAll('.accordion-header');
+                    headers.forEach((h) => {
+                        const panel = h.nextElementSibling;
+                        if (h === header) {
+                            const expanded = h.getAttribute('aria-expanded') === 'true';
+                            h.setAttribute('aria-expanded', !expanded);
+                            panel.style.display = expanded ? 'none' : 'block';
+                        } else {
+                            h.setAttribute('aria-expanded', 'false');
+                            panel.style.display = 'none';
+                        }
+                    });
+                });
+
+                // Open the new accordion
+                header.click();
+
+                // Trigger the change event for all tab-type-selectors on initial load
+                document.querySelectorAll('.tab-type-selector').forEach(function (selector) {
+                    var event = new Event('change', { bubbles: true });
+                    selector.dispatchEvent(event);
+                });
+            });
+
+            // Remove accordion tab
+            function removeAccordionTab(button) {
+                var item = button.closest('.accordion-item');
+                item.remove();
+                // Open the first accordion if any remain
+                var headers = document.querySelectorAll('.accordion-header');
+                if (headers.length > 0) {
+                    headers[0].setAttribute('aria-expanded', 'true');
+                    headers[0].nextElementSibling.style.display = 'block';
+                }
+            }
+            window.removeAccordionTab = removeAccordionTab;
+
             function generateSlug(name) {
                 // Convert spaces to dashes and remove invalid characters
                 return name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '');
@@ -200,107 +333,6 @@ class GroupExtension extends \BP_Group_Extension
                     return 'Slug must be unique.';
                 }
                 return '';
-            }
-
-            function openTab(evt, tabId) {
-                var i, tabcontent, tablinks;
-                tabcontent = document.getElementsByClassName("tabcontent");
-                for (i = 0; i < tabcontent.length; i++) {
-                    tabcontent[i].style.display = "none";
-                }
-                tablinks = document.getElementsByClassName("tablinks");
-                for (i = 0; i < tablinks.length; i++) {
-                    tablinks[i].className = tablinks[i].className.replace(" active", "");
-                }
-                document.getElementById(tabId).style.display = "block";
-                evt.currentTarget.className += " active";
-            }
-
-            function addNewTab() {
-                var tabContainer = document.getElementById("ydtb-tabs-settings");
-                var tabLinks = tabContainer.querySelector(".tab");
-                var tabContentsBox = tabContainer.querySelector("#tab-content-container"); // Select the box where tabs go
-                var tabContents = tabContentsBox.querySelectorAll(".tabcontent");
-                var newIndex = tabContents.length;
-
-                // Generate a slug for the new tab
-                var defaultName = "New Tab";
-                var defaultSlug = generateSlug(defaultName);
-
-                // Create new tab button
-                var newTabButton = document.createElement("button");
-                newTabButton.className = "tablinks";
-                newTabButton.textContent = defaultName;
-                newTabButton.setAttribute("type", "button");
-                newTabButton.setAttribute("onclick", "openTab(event, 'tab-" + newIndex + "')");
-                newTabButton.style.marginRight = "5px";
-                tabLinks.insertBefore(newTabButton, tabLinks.lastElementChild);
-
-                // Check if Elementor Pro is active
-                var isElementorProActive = <?php echo json_encode($this->is_elementor_active()); ?>;
-
-                // Create new tab content
-                var newTabContent = document.createElement("div");
-                newTabContent.id = "tab-" + newIndex;
-                newTabContent.className = "tabcontent";
-                newTabContent.innerHTML = `
-        <label>Name: <input type="text" name="ydtb_tabs[${newIndex}][name]" value="${defaultName}"></label>
-        <label>Slug: <input type="text" name="ydtb_tabs[${newIndex}][slug]" value="${defaultSlug}"></label>
-        <label>Type:
-            <select name="ydtb_tabs[${newIndex}][type]" class="tab-type-selector" data-index="${newIndex}">
-                <option value="url_redirect">URL Redirect</option>
-                <option value="shortcode">Shortcode</option>
-                ${isElementorProActive ? '<option value="saved_section">Saved Section</option>' : ''}
-            </select>
-        </label>
-        <div class="tab-type-fields" id="fields-${newIndex}">
-            <!-- Fields will be dynamically added here -->
-        </div>
-        <p><?php _e('Set who can see this tab.', 'ydtb-group-tabs'); ?></p>
-        <select name="ydtb_tabs[${newIndex}][visibility]" style="width: 100%;">
-            <option value="anyone"><?php _e('Anyone ( Public )', 'ydtb-group-tabs'); ?></option>
-            <option value="loggedin"><?php _e('Logged In Users', 'ydtb-group-tabs'); ?></option>
-            <option value="member"><?php _e('Group Members', 'ydtb-group-tabs'); ?></option>
-            <option value="mod"><?php _e('Group Moderators', 'ydtb-group-tabs'); ?></option>
-            <option value="admin"><?php _e('Group Admins', 'ydtb-group-tabs'); ?></option>
-            <option value="noone"><?php _e('No One', 'ydtb-group-tabs'); ?></option>
-        </select>
-        <br><br>
-        <div style="text-align: right;">
-            <button type="button" style="background-color: #f44336;" onclick="removeTab(this)">Remove Tab</button>
-        </div>
-    `;
-                tabContentsBox.appendChild(newTabContent); // Append the new tab content to the box
-
-                // Open the new tab
-                openTab({ currentTarget: newTabButton }, "tab-" + newIndex);
-
-                // Trigger the change event for all tab-type-selectors on initial load
-                document.querySelectorAll('.tab-type-selector').forEach(function (selector) {
-                    var event = new Event('change', { bubbles: true });
-                    selector.dispatchEvent(event);
-                });
-            }
-
-            function removeTab(button) {
-                var tabContent = button.closest('.tabcontent');
-                var tabId = tabContent.id;
-                var tabButton = document.querySelector(`.tablinks[onclick*="${tabId}"]`);
-
-                // Remove the tab content and button
-                tabContent.remove();
-                if (tabButton) tabButton.remove();
-
-                // After removing, show the first available tab
-                var remainingTabs = document.querySelectorAll('.tabcontent');
-                if (remainingTabs.length > 0) {
-                    var firstTab = remainingTabs[0];
-                    var firstTabId = firstTab.id;
-                    var firstTabButton = document.querySelector(`.tablinks[onclick*="${firstTabId}"]`);
-                    if (firstTabButton) {
-                        openTab({ currentTarget: firstTabButton }, firstTabId);
-                    }
-                }
             }
 
             document.addEventListener('input', function (e) {
@@ -413,7 +445,7 @@ class GroupExtension extends \BP_Group_Extension
                 }
             });
 
-            // Open the first tab by default
+            // Open the first accordion by default
             openTab(event, 'tab-0');
         </script>
         <?php
