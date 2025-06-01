@@ -229,15 +229,15 @@ class GroupExtension extends \BP_Group_Extension
                     <?php else: ?>
                         <div class="accordion-item">
                             <div class="accordion-header-row" tabindex="0" aria-expanded="false" style="cursor:default;">
-                                <span class="accordion-title"><?php echo esc_html($tab_info['nav_item']->name); ?></span>
-                            </div>
-                            <div class="accordion-panel" style="display: block;">
-                                <p>
-                                    <strong><?php _e('Slug:', 'ydtb-group-tabs'); ?></strong>
-                                    <?php echo esc_html($tab_info['slug']); ?><br>
-                                    <strong><?php _e('Position:', 'ydtb-group-tabs'); ?></strong>
-                                    <?php echo esc_html($tab_info['position']); ?>
-                                </p>
+                                <div style="display:flex; width:100%; align-items:center;">
+                                    <span style="flex:1 1 auto; text-align:left;">
+                                        <?php echo esc_html($tab_info['nav_item']->name); ?> -
+                                        <?php echo esc_html($tab_info['slug']); ?>
+                                    </span>
+                                    <span style="flex:0 0 auto; text-align:right; font-weight:bold;">
+                                        <?php echo esc_html($tab_info['position']); ?>
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     <?php endif; ?>
