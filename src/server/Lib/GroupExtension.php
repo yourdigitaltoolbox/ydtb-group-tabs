@@ -548,7 +548,6 @@ class GroupExtension extends \BP_Group_Extension
                     const container = document.getElementById('accordion-container');
                     const allItems = Array.from(container.querySelectorAll('.accordion-item'));
                     const customItems = allItems.filter(i => i.querySelector('.remove-accordion-tab'));
-                    const staticItems = allItems.filter(i => !i.querySelector('.remove-accordion-tab'));
 
                     // Get current position
                     const posInput = item.querySelector('.tab-position-input');
@@ -578,6 +577,18 @@ class GroupExtension extends \BP_Group_Extension
 
                     const target = positions[targetIdx];
 
+                    // Helper for animation
+                    function animateSwap(el1, el2) {
+                        el1.style.transition = 'background 0.2s';
+                        el2.style.transition = 'background 0.2s';
+                        el1.style.background = '#ffe082';
+                        el2.style.background = '#ffe082';
+                        setTimeout(() => {
+                            el1.style.background = '';
+                            el2.style.background = '';
+                        }, 300);
+                    }
+
                     if (!target.isCustom) {
                         // Jump over static tab: set position just below (up) or just above (down) the static tab
                         let newPos = isUp ? target.pos - 1 : target.pos + 1;
@@ -589,6 +600,39 @@ class GroupExtension extends \BP_Group_Extension
                         // Update header
                         const headerPos = item.querySelector('span[style*="font-weight:bold"]');
                         if (headerPos) headerPos.textContent = newPos;
+                        // Animate move
+                        item.style.transition = 'background 0.2s';
+                        item.style.background = '#ffe082';
+                        setTimeout(() => {
+                            item.style.background = '';
+                        }, 300);
+
+                        // Move the item in the DOM to the correct position
+                        // Find where to insert based on newPos
+                        let inserted = false;
+                        for (let i = 0; i < allItems.length; i++) {
+                            const other = allItems[i];
+                            if (other === item) continue;
+                            let otherPos = parseInt(
+                                other.querySelector('.tab-position-input')
+                                    ? other.querySelector('.tab-position-input').value
+                                    : other.querySelector('span[style*="font-weight:bold"]').textContent,
+                                10
+                            );
+                            if (isUp && otherPos >= newPos) {
+                                container.insertBefore(item, other);
+                                inserted = true;
+                                break;
+                            }
+                            if (!isUp && otherPos > newPos) {
+                                container.insertBefore(item, other);
+                                inserted = true;
+                                break;
+                            }
+                        }
+                        if (!inserted) {
+                            container.appendChild(item);
+                        }
                     } else {
                         // Swap with the custom tab
                         const targetPosInput = target.el.querySelector('.tab-position-input');
@@ -603,6 +647,8 @@ class GroupExtension extends \BP_Group_Extension
                             headerPosA.textContent = headerPosB.textContent;
                             headerPosB.textContent = tempText;
                         }
+                        // Animate swap
+                        animateSwap(item, target.el);
                         // Swap DOM order
                         if (isUp) {
                             container.insertBefore(item, target.el);
