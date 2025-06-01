@@ -468,7 +468,7 @@ class GroupExtension extends \BP_Group_Extension
                         pos: parseInt(
                             i.querySelector('.tab-position-input')
                                 ? i.querySelector('.tab-position-input').value
-                                : '9999',
+                                : i.querySelector('span[style*="font-weight:bold"]').textContent,
                             10
                         ),
                         isCustom: !!i.querySelector('.remove-accordion-tab')
@@ -507,7 +507,8 @@ class GroupExtension extends \BP_Group_Extension
                             // Update the bumped tab's position
                             const bumpInput = bump.el.querySelector('.tab-position-input');
                             bumpInput.value = pos + dir;
-                            // No need to update any visible span
+                            const bumpHeader = bump.el.querySelector('span[style*="font-weight:bold"]');
+                            if (bumpHeader) bumpHeader.textContent = pos + dir;
                         }
                     }
 
@@ -516,7 +517,8 @@ class GroupExtension extends \BP_Group_Extension
                         let newPos = isUp ? target.pos - 1 : target.pos + 1;
                         bumpTab(newPos, isUp ? -1 : 1);
                         posInput.value = newPos;
-                        // No need to update any visible span
+                        const headerPos = item.querySelector('span[style*="font-weight:bold"]');
+                        if (headerPos) headerPos.textContent = newPos;
                         item.style.transition = 'background 0.2s';
                         item.style.background = '#ffe082';
                         setTimeout(() => {
@@ -531,7 +533,7 @@ class GroupExtension extends \BP_Group_Extension
                             let otherPos = parseInt(
                                 other.querySelector('.tab-position-input')
                                     ? other.querySelector('.tab-position-input').value
-                                    : '9999',
+                                    : other.querySelector('span[style*="font-weight:bold"]').textContent,
                                 10
                             );
                             if (isUp && otherPos >= newPos) {
@@ -551,11 +553,16 @@ class GroupExtension extends \BP_Group_Extension
                     } else {
                         // Swap with the custom tab
                         const targetPosInput = target.el.querySelector('.tab-position-input');
-                        // Swap values
+                        const headerPosA = item.querySelector('span[style*="font-weight:bold"]');
+                        const headerPosB = target.el.querySelector('span[style*="font-weight:bold"]');
                         const temp = posInput.value;
                         posInput.value = targetPosInput.value;
                         targetPosInput.value = temp;
-                        // No need to update any visible span
+                        if (headerPosA && headerPosB) {
+                            const tempText = headerPosA.textContent;
+                            headerPosA.textContent = headerPosB.textContent;
+                            headerPosB.textContent = tempText;
+                        }
                         animateSwap(item, target.el);
                         if (isUp) {
                             container.insertBefore(item, target.el);
@@ -569,15 +576,114 @@ class GroupExtension extends \BP_Group_Extension
                     }
                 });
 
-                // Open the first accordion by default
-                const headerRows = container.querySelectorAll('.accordion-header-row');
-                // Remove or comment out this block to keep all accordions closed by default
-                // if (headerRows.length > 0) {
-                //     headerRows[0].setAttribute('aria-expanded', 'true');
-                //     headerRows[0].classList.add('open');
-                //     const firstPanel = headerRows[0].parentNode.querySelector('.accordion-panel');
-                //     if (firstPanel) firstPanel.style.display = 'block';
-                // }
+                // Attach change handler and trigger for all existing selectors
+                document.querySelectorAll('.tab-type-selector').forEach(function (selector) {
+                    selector.addEventListener('change', handleTabTypeSelectorChange);
+                    // Trigger once to show the correct field on load
+                    selector.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+
+                // Add new accordion tab
+                document.getElementById('add-accordion-tab').addEventListener('click', function () {
+                    var container = document.getElementById('accordion-container');
+                    var newIndex = container.querySelectorAll('.accordion-item').length;
+                    var isElementorProActive = <?php echo json_encode($this->is_elementor_active()); ?>;
+                    var savedSections = <?php echo json_encode($saved_sections); ?>;
+                    var sectionOptions = '<option value=""><?php _e('Select a section', 'ydtb-group-tabs'); ?></option>';
+                    for (var id in savedSections) {
+                        sectionOptions += '<option value="' + id + '">' + savedSections[id] + '</option>';
+                    }
+
+                    var item = document.createElement('div');
+                    item.className = 'accordion-item';
+                    // Find the next available position (after all current custom tabs)
+                    let maxPos = 0;
+                    container.querySelectorAll('.tab-position-input').forEach(function (input) {
+                        const val = parseInt(input.value, 10);
+                        if (!isNaN(val) && val > maxPos) maxPos = val;
+                    });
+                    let newPos = maxPos + 1;
+
+                    item.innerHTML = `
+                        <div class="accordion-header-row" tabindex="0" aria-expanded="false">
+                            <span class="accordion-title" style="flex:1 1 auto; text-align:left;">New Tab</span>
+                            <span style="flex:0 0 auto; text-align:right; font-weight:bold; margin-left:auto;">${newPos}</span>
+                            <span class="move-tab-buttons">
+                                <button type="button" class="move-tab-up" title="<?php esc_attr_e('Move Up', 'ydtb-group-tabs'); ?>">&#8593;</button>
+                                <button type="button" class="move-tab-down" title="<?php esc_attr_e('Move Down', 'ydtb-group-tabs'); ?>">&#8595;</button>
+                            </span>
+                            <button type="button" class="remove-accordion-tab" title="<?php esc_attr_e('Remove Tab', 'ydtb-group-tabs'); ?>">
+                                <svg width="18" height="18" viewBox="0 0 20 20" fill="white" aria-hidden="true" focusable="false">
+                                    <rect x="3" y="5.5" width="14" height="1.5" rx="0.75" fill="white"/>
+                                    <path d="M6.5 7.5V15.5M10 7.5V15.5M13.5 7.5V15.5M8.5 3.5H11.5C12.0523 3.5 12.5 3.94772 12.5 4.5V5.5H7.5V4.5C7.5 3.94772 7.94772 3.5 8.5 3.5Z" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+                                    <rect x="6.5" y="7.5" width="7" height="8" rx="1" fill="white" stroke="white" stroke-width="1"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="accordion-panel" style="display: none;">
+                            <label>Name: <input type="text" name="ydtb_tabs[${newIndex}][name]" value="New Tab"></label>
+                            <label>Slug: <input type="text" name="ydtb_tabs[${newIndex}][slug]" value="new-tab"></label>
+                            <label>Type:
+                                <select name="ydtb_tabs[${newIndex}][type]" class="tab-type-selector" data-index="${newIndex}">
+                                    <option value="url_redirect">URL Redirect</option>
+                                    <option value="shortcode">Shortcode</option>
+                                    ${isElementorProActive ? '<option value="saved_section">Saved Section</option>' : ''}
+                                </select>
+                            </label>
+                            <div class="tab-type-fields" id="fields-${newIndex}"></div>
+                            <p><?php _e('Set who can see this tab.', 'ydtb-group-tabs'); ?></p>
+                            <select name="ydtb_tabs[${newIndex}][visibility]" style="width: 100%;">
+                                <option value="anyone"><?php _e('Anyone ( Public )', 'ydtb-group-tabs'); ?></option>
+                                <option value="loggedin"><?php _e('Logged In Users', 'ydtb-group-tabs'); ?></option>
+                                <option value="member"><?php _e('Group Members', 'ydtb-group-tabs'); ?></option>
+                                <option value="mod"><?php _e('Group Moderators', 'ydtb-group-tabs'); ?></option>
+                                <option value="admin"><?php _e('Group Admins', 'ydtb-group-tabs'); ?></option>
+                                <option value="noone"><?php _e('No One', 'ydtb-group-tabs'); ?></option>
+                            </select>
+                            <br><br>
+                            <input type="hidden" class="tab-position-input" name="ydtb_tabs[${newIndex}][position]" value="${newPos}">
+                        </div>
+                    `;
+                    container.appendChild(item);
+
+                    // Attach change handler and trigger for the new selector
+                    var newSelector = item.querySelector('.tab-type-selector');
+                    if (newSelector) {
+                        newSelector.addEventListener('change', handleTabTypeSelectorChange);
+                        newSelector.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+
+                    // Open the new accordion
+                    var row = item.querySelector('.accordion-header-row');
+                    if (row) {
+                        row.setAttribute('tabindex', '0');
+                        row.focus();
+                        row.click(); // This will trigger the event delegation and open the accordion
+                    }
+                });
+
+                function handleTabTypeSelectorChange(e) {
+                    var selector = e.target;
+                    var index = selector.getAttribute('data-index');
+                    var value = selector.value;
+                    var fields = document.getElementById('fields-' + index);
+                    if (!fields) return;
+                    fields.innerHTML = '';
+                    if (value === 'saved_section') {
+                        var savedSections = <?php echo json_encode($saved_sections); ?>;
+                        var sectionOptions = '<option value=""><?php _e('Select a section', 'ydtb-group-tabs'); ?></option>';
+                        for (var id in savedSections) {
+                            sectionOptions += '<option value="' + id + '">' + savedSections[id] + '</option>';
+                        }
+                        fields.innerHTML = `<label>Saved Section:
+                            <select name="ydtb_tabs[${index}][content]">${sectionOptions}</select>
+                        </label>`;
+                    } else if (value === 'url_redirect') {
+                        fields.innerHTML = `<label>Redirect URL: <input type="text" name="ydtb_tabs[${index}][content]"></label>`;
+                    } else if (value === 'shortcode') {
+                        fields.innerHTML = `<label>Shortcode: <input type="text" name="ydtb_tabs[${index}][content]"></label>`;
+                    }
+                }
             });
 
             // Add new accordion tab
@@ -643,294 +749,19 @@ class GroupExtension extends \BP_Group_Extension
                 `;
                 container.appendChild(item);
 
-                // Remove tab logic
-                var removeBtn = row.querySelector('.remove-accordion-tab');
-                if (removeBtn) {
-                    removeBtn.addEventListener('click', function (e) {
-                        e.stopPropagation();
-                        const item = row.closest('.accordion-item');
-                        item.remove();
-                        // Open the first accordion if any remain
-                        const remainingRows = document.querySelectorAll('.accordion-header-row');
-                        if (remainingRows.length > 0) {
-                            remainingRows[0].setAttribute('aria-expanded', 'true');
-                            remainingRows[0].classList.add('open');
-                            const firstPanel = remainingRows[0].parentNode.querySelector('.accordion-panel');
-                            if (firstPanel) firstPanel.style.display = 'block';
-                        }
-                    });
+                // Attach change handler and trigger for the new selector
+                var newSelector = item.querySelector('.tab-type-selector');
+                if (newSelector) {
+                    newSelector.addEventListener('change', handleTabTypeSelectorChange);
+                    newSelector.dispatchEvent(new Event('change', { bubbles: true }));
                 }
 
                 // Open the new accordion
-                row.setAttribute('aria-expanded', 'true');
-                row.classList.add('open');
-                var panel = row.parentNode.querySelector('.accordion-panel');
-                if (panel) panel.style.display = 'block';
-
-                // Trigger the change event for all tab-type-selectors on initial load
-                document.querySelectorAll('.tab-type-selector').forEach(function (selector) {
-                    var event = new Event('change', { bubbles: true });
-                    selector.dispatchEvent(event);
-                });
-
-                item.querySelectorAll('.move-tab-up, .move-tab-down').forEach(function (btn) {
-                    btn.addEventListener('click', function (e) {
-                        e.stopPropagation();
-                        const isUp = btn.classList.contains('move-tab-up');
-                        const item = btn.closest('.accordion-item');
-                        const container = document.getElementById('accordion-container');
-                        const allItems = Array.from(container.querySelectorAll('.accordion-item'));
-                        const customItems = allItems.filter(i => i.querySelector('.remove-accordion-tab'));
-
-                        // Get current position
-                        const posInput = item.querySelector('.tab-position-input');
-                        let currentPos = parseInt(posInput.value, 10);
-
-                        // Find all positions
-                        const positions = allItems.map(i => ({
-                            el: i,
-                            pos: parseInt(
-                                i.querySelector('.tab-position-input')
-                                    ? i.querySelector('.tab-position-input').value
-                                    : '9999',
-                                10
-                            ),
-                            isCustom: !!i.querySelector('.remove-accordion-tab')
-                        }));
-
-                        // Sort by position
-                        positions.sort((a, b) => a.pos - b.pos);
-
-                        // Find index of current item in sorted list
-                        const idx = positions.findIndex(p => p.el === item);
-
-                        // Find the next item in the desired direction
-                        let targetIdx = isUp ? idx - 1 : idx + 1;
-                        if (targetIdx < 0 || targetIdx >= positions.length) return;
-
-                        const target = positions[targetIdx];
-
-                        // Helper for animation
-                        function animateSwap(el1, el2) {
-                            el1.style.transition = 'background 0.2s';
-                            el2.style.transition = 'background 0.2s';
-                            el1.style.background = '#ffe082';
-                            el2.style.background = '#ffe082';
-                            setTimeout(() => {
-                                el1.style.background = '';
-                                el2.style.background = '';
-                            }, 300);
-                        }
-
-                        // Helper to recursively bump tabs
-                        function bumpTab(pos, dir) {
-                            // Find a custom tab at this position
-                            const bump = positions.find(p => p.isCustom && p.pos === pos);
-                            if (bump) {
-                                bumpTab(pos + dir, dir);
-                                // Update the bumped tab's position
-                                const bumpInput = bump.el.querySelector('.tab-position-input');
-                                bumpInput.value = pos + dir;
-                                // No need to update any visible span
-                            }
-                        }
-
-                        if (!target.isCustom) {
-                            // We're crossing a static tab, so bump the next custom tab (if any)
-                            let newPos = isUp ? target.pos - 1 : target.pos + 1;
-                            bumpTab(newPos, isUp ? -1 : 1);
-                            posInput.value = newPos;
-                            // No need to update any visible span
-                            item.style.transition = 'background 0.2s';
-                            item.style.background = '#ffe082';
-                            setTimeout(() => {
-                                item.style.background = '';
-                            }, 300);
-
-                            // Move the item in the DOM to the correct position
-                            // Find where to insert based on newPos
-                            let inserted = false;
-                            for (let i = 0; i < allItems.length; i++) {
-                                const other = allItems[i];
-                                if (other === item) continue;
-                                let otherPos = parseInt(
-                                    other.querySelector('.tab-position-input')
-                                        ? other.querySelector('.tab-position-input').value
-                                        : '9999',
-                                    10
-                                );
-                                if (isUp && otherPos >= newPos) {
-                                    container.insertBefore(item, other);
-                                    inserted = true;
-                                    break;
-                                }
-                                if (!isUp && otherPos > newPos) {
-                                    container.insertBefore(item, other);
-                                    inserted = true;
-                                    break;
-                                }
-                            }
-                            if (!inserted) {
-                                container.appendChild(item);
-                            }
-                        } else {
-                            // Swap with the custom tab
-                            const targetPosInput = target.el.querySelector('.tab-position-input');
-                            // Swap values
-                            const temp = posInput.value;
-                            posInput.value = targetPosInput.value;
-                            targetPosInput.value = temp;
-                            // No need to update any visible span
-                            animateSwap(item, target.el);
-                            // Swap DOM order
-                            if (isUp) {
-                                container.insertBefore(item, target.el);
-                            } else {
-                                if (target.el.nextSibling) {
-                                    container.insertBefore(item, target.el.nextSibling);
-                                } else {
-                                    container.appendChild(item);
-                                }
-                            }
-                        }
-                    });
-                });
-
-                // After appending the new item:
-                var newSelector = item.querySelector('.tab-type-selector');
-                if (newSelector) {
-                    newSelector.addEventListener('change', handleTabTypeSelectorChange);
-                    newSelector.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-            });
-
-            document.querySelectorAll('.move-tab-up, .move-tab-down').forEach(function (btn) {
-                btn.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    const isUp = btn.classList.contains('move-tab-up');
-                    const item = btn.closest('.accordion-item');
-                    const container = document.getElementById('accordion-container');
-                    const allItems = Array.from(container.querySelectorAll('.accordion-item'));
-                    const customItems = allItems.filter(i => i.querySelector('.remove-accordion-tab'));
-
-                    // Get current position
-                    const posInput = item.querySelector('.tab-position-input');
-                    let currentPos = parseInt(posInput.value, 10);
-
-                    // Find all positions
-                    const positions = allItems.map(i => ({
-                        el: i,
-                        pos: parseInt(
-                            i.querySelector('.tab-position-input')
-                                ? i.querySelector('.tab-position-input').value
-                                : '9999',
-                            10
-                        ),
-                        isCustom: !!i.querySelector('.remove-accordion-tab')
-                    }));
-
-                    // Sort by position
-                    positions.sort((a, b) => a.pos - b.pos);
-
-                    // Find index of current item in sorted list
-                    const idx = positions.findIndex(p => p.el === item);
-
-                    // Find the next item in the desired direction
-                    let targetIdx = isUp ? idx - 1 : idx + 1;
-                    if (targetIdx < 0 || targetIdx >= positions.length) return;
-
-                    const target = positions[targetIdx];
-
-                    // Helper for animation
-                    function animateSwap(el1, el2) {
-                        el1.style.transition = 'background 0.2s';
-                        el2.style.transition = 'background 0.2s';
-                        el1.style.background = '#ffe082';
-                        el2.style.background = '#ffe082';
-                        setTimeout(() => {
-                            el1.style.background = '';
-                            el2.style.background = '';
-                        }, 300);
-                    }
-
-                    // Helper to recursively bump tabs
-                    function bumpTab(pos, dir) {
-                        // Find a custom tab at this position
-                        const bump = positions.find(p => p.isCustom && p.pos === pos);
-                        if (bump) {
-                            bumpTab(pos + dir, dir);
-                            // Update the bumped tab's position
-                            const bumpInput = bump.el.querySelector('.tab-position-input');
-                            bumpInput.value = pos + dir;
-                            // No need to update any visible span
-                        }
-                    }
-
-                    if (!target.isCustom) {
-                        // We're crossing a static tab, so bump the next custom tab (if any)
-                        let newPos = isUp ? target.pos - 1 : target.pos + 1;
-                        bumpTab(newPos, isUp ? -1 : 1);
-                        posInput.value = newPos;
-                        // No need to update any visible span
-                        item.style.transition = 'background 0.2s';
-                        item.style.background = '#ffe082';
-                        setTimeout(() => {
-                            item.style.background = '';
-                        }, 300);
-
-                        // Move the item in the DOM to the correct position
-                        // Find where to insert based on newPos
-                        let inserted = false;
-                        for (let i = 0; i < allItems.length; i++) {
-                            const other = allItems[i];
-                            if (other === item) continue;
-                            let otherPos = parseInt(
-                                other.querySelector('.tab-position-input')
-                                    ? other.querySelector('.tab-position-input').value
-                                    : '9999',
-                                10
-                            );
-                            if (isUp && otherPos >= newPos) {
-                                container.insertBefore(item, other);
-                                inserted = true;
-                                break;
-                            }
-                            if (!isUp && otherPos > newPos) {
-                                container.insertBefore(item, other);
-                                inserted = true;
-                                break;
-                            }
-                        }
-                        if (!inserted) {
-                            container.appendChild(item);
-                        }
-                    } else {
-                        // Swap with the custom tab
-                        const targetPosInput = target.el.querySelector('.tab-position-input');
-                        // Swap values
-                        const temp = posInput.value;
-                        posInput.value = targetPosInput.value;
-                        targetPosInput.value = temp;
-                        // No need to update any visible span
-                        animateSwap(item, target.el);
-                        // Swap DOM order
-                        if (isUp) {
-                            container.insertBefore(item, target.el);
-                        } else {
-                            if (target.el.nextSibling) {
-                                container.insertBefore(item, target.el.nextSibling);
-                            } else {
-                                container.appendChild(item);
-                            }
-                        }
-                    }
-                });
-
-                // After appending the new item:
-                var newSelector = item.querySelector('.tab-type-selector');
-                if (newSelector) {
-                    newSelector.addEventListener('change', handleTabTypeSelectorChange);
-                    newSelector.dispatchEvent(new Event('change', { bubbles: true }));
+                var row = item.querySelector('.accordion-header-row');
+                if (row) {
+                    row.setAttribute('tabindex', '0');
+                    row.focus();
+                    row.click(); // This will trigger the event delegation and open the accordion
                 }
             });
 
