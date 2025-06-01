@@ -99,6 +99,22 @@ class GroupExtension extends \BP_Group_Extension
         $group_meta = groups_get_groupmeta($group_id, 'ydtb_tabs_data', true);
         $group_meta = is_array($group_meta) ? $group_meta : [];
         $saved_sections = $this->is_elementor_active() ? $this->get_saved_sections() : [];
+
+        global $bp;
+        $current_group_slug = $bp->groups->current_group->slug;
+        $group_nav = $bp->groups->nav->get();
+
+        $filtered_nav_items = [];
+        if (is_array($group_nav)) {
+            foreach ($group_nav as $key => $nav_item) {
+                if (preg_match('/^' . preg_quote($current_group_slug, '/') . '\/[^\/]+$/', $key)) {
+                    $filtered_nav_items[$key] = $nav_item;
+                }
+            }
+        }
+
+        // var_dump(highlight_string("<?\n" . var_export($filtered_nav_items, true) . ";\n ?>"));
+
         ?>
 
         <div id="ydtb-tabs-accordion-settings">
