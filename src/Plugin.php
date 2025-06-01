@@ -11,15 +11,16 @@ class Plugin
     public function __construct()
     {
         if (!$this->plugin_checks()) {
-            // still run the safe providers like the updater if the plugin checks fail
             foreach ($this->safeProviders() as $service) {
                 (new $service)->register();
             }
             return;
         }
         $this->register();
-        // Register buddyBoss Specific extensions
         add_action('bp_include', [$this, 'registerBuddyBossExtensions']);
+
+        // Add this filter for per-group default tab
+        add_filter('bp_groups_default_extension', [$this, 'set_group_default_tab'], 10, 2);
     }
 
     /**
@@ -79,5 +80,27 @@ class Plugin
             require(dirname(__FILE__) . '/server/Lib/GroupExtension.php');
             bp_register_group_extension('GroupExtension');
         }
+    }
+
+    /**
+     * Set the default tab for each group based on group meta.
+     *
+     * @param string $default_extension The default extension slug.
+     * @param int $group_id The group ID.
+     * @return string
+     */
+    public function set_group_default_tab($default_extension, $group_id = null)
+    {
+        if (!$group_id) {
+            $group_id = bp_get_current_group_id();
+        }
+        if (!$group_id) {
+            return $default_extension;
+        }
+        $custom_default = groups_get_groupmeta($group_id, 'ydtb_default_tab', true);
+        if ($custom_default && $custom_default !== 'default') {
+            return $custom_default;
+        }
+        return $default_extension;
     }
 }

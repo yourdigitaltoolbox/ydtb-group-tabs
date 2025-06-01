@@ -58,6 +58,7 @@ class GroupExtension extends \BP_Group_Extension
                     'screen_function' => [$this, 'bp_group_custom'],
                     'user_has_access' => $user_access,
                     'item_css_id' => isset($tab['slug']) ? sanitize_title($tab['slug']) : '',
+                    'position' => isset($tab['position']) ? intval($tab['position']) : 9999, // <-- Add this line
                 );
 
                 // Ensure all required fields are set before adding the subnav item
@@ -99,153 +100,517 @@ class GroupExtension extends \BP_Group_Extension
         $group_meta = groups_get_groupmeta($group_id, 'ydtb_tabs_data', true);
         $group_meta = is_array($group_meta) ? $group_meta : [];
         $saved_sections = $this->is_elementor_active() ? $this->get_saved_sections() : [];
-        ?>
 
-        <div id="ydtb-tabs-settings">
-            <div class="tab">
-                <?php foreach ($group_meta as $index => $tab): ?>
-                    <button type="button" class="tablinks" onclick="openTab(event, 'tab-<?php echo $index; ?>')">
-                        <?php echo esc_html($tab['name']); ?>
-                    </button>
-                <?php endforeach; ?>
-                <button type="button" class="tablinks" id="new-tab-button" onclick="addNewTab()">+ Add Tab</button>
-            </div>
-            <div style="margin-top: 20px;"></div>
-            <div id="tab-content-container" style="border-radius: 5px; border: 1px solid #ccc; padding: 25px;">
-                <?php foreach ($group_meta as $index => $tab): ?>
-                    <div id="tab-<?php echo $index; ?>" class="tabcontent">
-                        <label>Name: <input type="text" name="ydtb_tabs[<?php echo $index; ?>][name]"
-                                value="<?php echo esc_attr($tab['name']); ?>"></label>
-                        <label>Slug:
-                            <input type="text" name="ydtb_tabs[<?php echo $index; ?>][slug]"
-                                value="<?php echo esc_attr($tab['slug'] ?? ''); ?>" <?php echo empty($tab['slug']) ? '' : 'data-user-edited="true"'; ?>>
+        global $bp;
+        $current_group_slug = $bp->groups->current_group->slug;
+        $group_nav = $bp->groups->nav->get();
+
+        // Build a lookup for custom tabs by slug for easy matching
+        $custom_tabs_by_slug = [];
+        foreach ($group_meta as $idx => $tab) {
+            if (!empty($tab['slug'])) {
+                $custom_tabs_by_slug[sanitize_title($tab['slug'])] = ['tab' => $tab, 'index' => $idx];
+            }
+        }
+
+        // Prepare a combined list of nav items with info about whether they're custom
+        $all_tabs = [];
+        if (is_array($group_nav)) {
+            foreach ($group_nav as $key => $nav_item) {
+                if (preg_match('/^' . preg_quote($current_group_slug, '/') . '\/[^\/]+$/', $key)) {
+                    $slug = basename($key);
+                    $is_custom = isset($custom_tabs_by_slug[$slug]);
+                    $custom_position = $is_custom && isset($custom_tabs_by_slug[$slug]['tab']['position'])
+                        ? intval($custom_tabs_by_slug[$slug]['tab']['position'])
+                        : (isset($nav_item->position) ? intval($nav_item->position) : 9999);
+
+                    $all_tabs[] = [
+                        'is_custom' => $is_custom,
+                        'slug' => $slug,
+                        'nav_item' => $nav_item,
+                        'custom_tab' => $is_custom ? $custom_tabs_by_slug[$slug]['tab'] : null,
+                        'custom_index' => $is_custom ? $custom_tabs_by_slug[$slug]['index'] : null,
+                        'position' => $custom_position,
+                    ];
+                }
+            }
+        }
+
+        // Sort by position
+        usort($all_tabs, function ($a, $b) {
+            return $a['position'] <=> $b['position'];
+        });
+
+        ?>
+        <div id="ydtb-tabs-accordion-settings">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <span style="font-size: 1.3em; font-weight: bold;"><?php _e('YDTB Custom Tabs', 'ydtb-group-tabs'); ?></span>
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label for="ydtb-default-tab-dropdown"
+                            style="font-weight:normal; white-space: nowrap; margin-bottom: 0; display: flex;">
+                            <?php _e('Default Tab:', 'ydtb-group-tabs'); ?>
                         </label>
-                        <label>Type:
-                            <select name="ydtb_tabs[<?php echo $index; ?>][type]" class="tab-type-selector"
-                                data-index="<?php echo $index; ?>">
-                                <option value="shortcode" <?php selected($tab['type'], 'shortcode'); ?>>Shortcode</option>
-                                <option value="url_redirect" <?php selected($tab['type'], 'url_redirect'); ?>>URL Redirect</option>
-                                <?php if ($this->is_elementor_active()): ?>
-                                    <option value="saved_section" <?php selected($tab['type'], 'saved_section'); ?>>Saved Section
-                                    </option>
-                                <?php endif; ?>
-                            </select>
-                        </label>
-                        <div class="tab-type-fields" id="fields-<?php echo $index; ?>">
-                            <?php if ($tab['type'] === 'saved_section' && $this->is_elementor_active()): ?>
-                                <label>Saved Section:
-                                    <select name="ydtb_tabs[<?php echo $index; ?>][content]">
-                                        <option value=""><?php _e('Select a section', 'ydtb-group-tabs'); ?></option>
-                                        <?php foreach ($saved_sections as $section_id => $section_title): ?>
-                                            <option value="<?php echo esc_attr($section_id); ?>" <?php selected($tab['content'], esc_attr($section_id)); ?>>
-                                                <?php echo esc_html($section_title); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </label>
-                            <?php elseif ($tab['type'] === 'url_redirect'): ?>
-                                <label>Redirect URL: <input type="text" name="ydtb_tabs[<?php echo $index; ?>][content]"
-                                        value="<?php echo esc_attr($tab['content']); ?>"></label>
-                            <?php elseif ($tab['type'] === 'shortcode'): ?>
-                                <label>Shortcode:
-                                    <input type="text" name="ydtb_tabs[<?php echo $index; ?>][content]"
-                                        value="<?php echo esc_attr($tab['content']); ?>">
-                                </label>
-                            <?php endif; ?>
-                        </div>
-                        <br>
-                        <p><?php _e('Set who can see this tab.', 'ydtb-group-tabs'); ?></p>
-                        <?php
-                        $visibility_options = array(
-                            'anyone' => __('Anyone ( Public )', 'ydtb-group-tabs'),
-                            'loggedin' => __('Logged In Users', 'ydtb-group-tabs'),
-                            'member' => __('Group Members', 'ydtb-group-tabs'),
-                            'mod' => __('Group Moderators', 'ydtb-group-tabs'),
-                            'admin' => __('Group Admins', 'ydtb-group-tabs'),
-                            'noone' => __('No One', 'ydtb-group-tabs'),
-                        );
-                        $current_visibility = isset($tab['visibility']) ? $tab['visibility'] : 'anyone';
-                        ?>
-                        <select name="ydtb_tabs[<?php echo $index; ?>][visibility]" style="width: 100%;">
-                            <?php foreach ($visibility_options as $value => $label): ?>
-                                <option value="<?php echo esc_attr($value); ?>" <?php selected($current_visibility, $value); ?>>
-                                    <?php echo esc_html($label); ?>
+                        <select id="ydtb-default-tab-dropdown" name="ydtb_default_tab" style="margin-bottom: 0;">
+                            <option value="default" <?php selected(groups_get_groupmeta($group_id, 'ydtb_default_tab', true), 'default'); ?>>
+                                <?php _e('Default', 'ydtb-group-tabs'); ?>
+                            </option>
+                            <?php foreach ($all_tabs as $tab_info): ?>
+                                <option value="<?php echo esc_attr($tab_info['slug']); ?>" <?php selected(groups_get_groupmeta($group_id, 'ydtb_default_tab', true), $tab_info['slug']); ?>>
+                                    <?php echo esc_html($tab_info['is_custom'] && !empty($tab_info['custom_tab']['name']) ? $tab_info['custom_tab']['name'] : $tab_info['nav_item']->name); ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <br><br>
-                        <div style="text-align: right;">
-                            <button type="button" style="background-color: #f44336;" onclick="removeTab(this)">Remove Tab</button>
-                        </div>
                     </div>
+                    <button type="button" id="add-accordion-tab" class="button button-secondary">+
+                        <?php _e('Add Tab', 'ydtb-group-tabs'); ?></button>
+                </div>
+            </div>
+            <div id="accordion-container">
+                <?php foreach ($all_tabs as $tab_info): ?>
+                    <?php if ($tab_info['is_custom']): ?>
+                        <?php
+                        $tab = $tab_info['custom_tab'];
+                        $index = $tab_info['custom_index'];
+                        ?>
+                        <div class="accordion-item">
+                            <div class="accordion-header-row" tabindex="0" aria-expanded="false">
+                                <div style="display:flex; width:100%; align-items:center;">
+                                    <span class="accordion-title" style="flex:1 1 auto; text-align:left;">
+                                        <?php echo esc_html($tab['name']); ?>
+                                    </span>
+                                    <span class="move-tab-buttons">
+                                        <button type="button" class="move-tab-up"
+                                            title="<?php esc_attr_e('Move Up', 'ydtb-group-tabs'); ?>">&#8593;</button>
+                                        <button type="button" class="move-tab-down"
+                                            title="<?php esc_attr_e('Move Down', 'ydtb-group-tabs'); ?>">&#8595;</button>
+                                    </span>
+                                    <button type="button" class="remove-accordion-tab"
+                                        title="<?php esc_attr_e('Remove Tab', 'ydtb-group-tabs'); ?>">
+                                        <!-- SVG as before -->
+                                        <svg width="18" height="18" viewBox="0 0 20 20" fill="white" aria-hidden="true"
+                                            focusable="false">
+                                            <rect x="3" y="5.5" width="14" height="1.5" rx="0.75" fill="white" />
+                                            <path
+                                                d="M6.5 7.5V15.5M10 7.5V15.5M13.5 7.5V15.5M8.5 3.5H11.5C12.0523 3.5 12.5 3.94772 12.5 4.5V5.5H7.5V4.5C7.5 3.94772 7.94772 3.5 8.5 3.5Z"
+                                                stroke="white" stroke-width="1.5" stroke-linecap="round" />
+                                            <rect x="6.5" y="7.5" width="7" height="8" rx="1" fill="white" stroke="white"
+                                                stroke-width="1" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="accordion-panel" style="display: none;">
+                                <label>Name: <input type="text" name="ydtb_tabs[<?php echo $index; ?>][name]"
+                                        value="<?php echo esc_attr($tab['name']); ?>"></label>
+                                <label>Slug:
+                                    <input type="text" name="ydtb_tabs[<?php echo $index; ?>][slug]"
+                                        value="<?php echo esc_attr($tab['slug'] ?? ''); ?>" <?php echo empty($tab['slug']) ? '' : 'data-user-edited="true"'; ?>>
+                                </label>
+                                <label>Type:
+                                    <select name="ydtb_tabs[<?php echo $index; ?>][type]" class="tab-type-selector"
+                                        data-index="<?php echo $index; ?>">
+                                        <option value="shortcode" <?php selected($tab['type'], 'shortcode'); ?>>Shortcode</option>
+                                        <option value="url_redirect" <?php selected($tab['type'], 'url_redirect'); ?>>URL Redirect
+                                        </option>
+                                        <?php if ($this->is_elementor_active()): ?>
+                                            <option value="saved_section" <?php selected($tab['type'], 'saved_section'); ?>>Saved Section
+                                            </option>
+                                        <?php endif; ?>
+                                    </select>
+                                </label>
+                                <div class="tab-type-fields" id="fields-<?php echo $index; ?>">
+                                    <?php if ($tab['type'] === 'saved_section' && $this->is_elementor_active()): ?>
+                                        <label>Saved Section:
+                                            <select name="ydtb_tabs[<?php echo $index; ?>][content]">
+                                                <option value=""><?php _e('Select a section', 'ydtb-group-tabs'); ?></option>
+                                                <?php foreach ($saved_sections as $section_id => $section_title): ?>
+                                                    <option value="<?php echo esc_attr($section_id); ?>" <?php selected($tab['content'], esc_attr($section_id)); ?>>
+                                                        <?php echo esc_html($section_title); ?>
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </label>
+                                    <?php elseif ($tab['type'] === 'url_redirect'): ?>
+                                        <label>Redirect URL: <input type="text" name="ydtb_tabs[<?php echo $index; ?>][content]"
+                                                value="<?php echo esc_attr($tab['content']); ?>"></label>
+                                    <?php elseif ($tab['type'] === 'shortcode'): ?>
+                                        <label>Shortcode:
+                                            <input type="text" name="ydtb_tabs[<?php echo $index; ?>][content]"
+                                                value="<?php echo esc_attr($tab['content']); ?>">
+                                        </label>
+                                    <?php endif; ?>
+                                </div>
+                                <br>
+                                <p><?php _e('Set who can see this tab.', 'ydtb-group-tabs'); ?></p>
+                                <?php
+                                $visibility_options = array(
+                                    'anyone' => __('Anyone ( Public )', 'ydtb-group-tabs'),
+                                    'loggedin' => __('Logged In Users', 'ydtb-group-tabs'),
+                                    'member' => __('Group Members', 'ydtb-group-tabs'),
+                                    'mod' => __('Group Moderators', 'ydtb-group-tabs'),
+                                    'admin' => __('Group Admins', 'ydtb-group-tabs'),
+                                    'noone' => __('No One', 'ydtb-group-tabs'),
+                                );
+                                $current_visibility = isset($tab['visibility']) ? $tab['visibility'] : 'anyone';
+                                ?>
+                                <select name="ydtb_tabs[<?php echo $index; ?>][visibility]" style="width: 100%;">
+                                    <?php foreach ($visibility_options as $value => $label): ?>
+                                        <option value="<?php echo esc_attr($value); ?>" <?php selected($current_visibility, $value); ?>>
+                                            <?php echo esc_html($label); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <br><br>
+                                <input type="hidden" class="tab-position-input" name="ydtb_tabs[<?php echo $index; ?>][position]"
+                                    value="<?php echo esc_attr($tab['position'] ?? $tab_info['position']); ?>">
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <div class="accordion-item">
+                            <div class="accordion-header-row" tabindex="0" aria-expanded="false" style="cursor:default;">
+                                <div style="display:flex; width:100%; align-items:center;">
+                                    <span style="flex:1 1 auto; text-align:left;">
+                                        <?php echo esc_html($tab_info['nav_item']->name); ?>
+                                    </span>
+                                </div>
+                            </div>
+                            <!-- Add this hidden input for static tabs -->
+                            <input type="hidden" class="tab-position-input" value="<?php echo esc_attr($tab_info['position']); ?>">
+                        </div>
+                    <?php endif; ?>
                 <?php endforeach; ?>
             </div>
-            <div style="margin-bottom: 20px;"></div>
         </div>
 
+        <style>
+            .accordion-item {
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                margin-bottom: 14px;
+                background: #fafbfc;
+                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+                padding: 0;
+            }
+
+            .accordion-header-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                width: 100%;
+                border-radius: 6px 6px 0 0;
+                background: #f1f1f1;
+                border-bottom: 1px solid #ddd;
+                transition: background 0.2s;
+                cursor: pointer;
+                padding: 12px 16px;
+                outline: none;
+                gap: 8px;
+            }
+
+            .accordion-header-row[aria-expanded="true"] {
+                background: #e2e2e2;
+            }
+
+            .accordion-title {
+                flex: 1 1 auto;
+                text-align: left;
+                font-size: 16px;
+                font-weight: 500;
+                color: #222;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .chevron {
+                flex: 0 0 auto;
+                display: inline-block;
+                transition: transform 0.2s;
+                margin-left: 16px;
+                font-size: 18px;
+                color: #888;
+            }
+
+            .accordion-header-row[aria-expanded="true"] .chevron {
+                transform: rotate(90deg);
+            }
+
+            .remove-accordion-tab {
+                background: #e53935 !important;
+                /* Red background */
+                border: none;
+                padding: 4px;
+                margin-left: 8px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                border-radius: 3px;
+                transition: background 0.15s;
+                box-shadow: 0 1px 2px rgba(229, 57, 53, 0.10);
+            }
+
+            .remove-accordion-tab:hover,
+            .remove-accordion-tab:focus {
+                background: #b71c1c !important;
+            }
+
+            .remove-accordion-tab svg {
+                display: block;
+                pointer-events: none;
+            }
+
+            .accordion-panel {
+                padding: 16px;
+                border-bottom: none;
+                background: #fff;
+                border-radius: 0 0 6px 6px;
+            }
+
+            .move-tab-buttons {
+                display: flex;
+                gap: 2px;
+                margin-right: 8px;
+            }
+
+            .move-tab-up,
+            .move-tab-down {
+                background: #e0e0e0;
+                border: none;
+                border-radius: 3px;
+                padding: 2px 6px;
+                cursor: pointer;
+                font-size: 14px;
+                line-height: 1;
+                transition: background 0.15s;
+            }
+
+            .move-tab-up:hover,
+            .move-tab-down:hover {
+                background: #bdbdbd;
+            }
+
+            #ydtb-tabs-accordion-settings>div[style*="display: flex"] button {
+                min-width: 120px;
+            }
+        </style>
+
         <script>
-            function generateSlug(name) {
-                // Convert spaces to dashes and remove invalid characters
-                return name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '');
-            }
+            document.addEventListener('DOMContentLoaded', function () {
+                var container = document.getElementById('accordion-container');
 
-            function validateSlug(slug, existingSlugs) {
-                if (!slug.trim()) {
-                    return 'Slug cannot be empty.';
-                }
-                if (!/^[a-z0-9-_]+$/.test(slug)) {
-                    return 'Slug can only contain letters, numbers, underscores, and dashes.';
-                }
-                if (existingSlugs.includes(slug)) {
-                    return 'Slug must be unique.';
-                }
-                return '';
-            }
+                // Accordion open/close logic (event delegation)
+                container.addEventListener('click', function (e) {
+                    const header = e.target.closest('.accordion-header-row');
+                    if (!header) return;
+                    // Prevent toggle if clicking the remove or move buttons
+                    if (e.target.closest('.remove-accordion-tab') || e.target.closest('.move-tab-up') || e.target.closest('.move-tab-down')) return;
+                    const allHeaders = container.querySelectorAll('.accordion-header-row');
+                    allHeaders.forEach(function (row) {
+                        const panel = row.parentNode.querySelector('.accordion-panel');
+                        if (row === header) {
+                            const expanded = row.getAttribute('aria-expanded') === 'true';
+                            row.setAttribute('aria-expanded', !expanded);
+                            row.classList.toggle('open', !expanded);
+                            if (panel) panel.style.display = expanded ? 'none' : 'block';
+                        } else {
+                            row.setAttribute('aria-expanded', 'false');
+                            row.classList.remove('open');
+                            if (panel) panel.style.display = 'none';
+                        }
+                    });
+                });
 
-            function openTab(evt, tabId) {
-                var i, tabcontent, tablinks;
-                tabcontent = document.getElementsByClassName("tabcontent");
-                for (i = 0; i < tabcontent.length; i++) {
-                    tabcontent[i].style.display = "none";
-                }
-                tablinks = document.getElementsByClassName("tablinks");
-                for (i = 0; i < tablinks.length; i++) {
-                    tablinks[i].className = tablinks[i].className.replace(" active", "");
-                }
-                document.getElementById(tabId).style.display = "block";
-                evt.currentTarget.className += " active";
-            }
+                // Keyboard accessibility for accordion
+                container.addEventListener('keydown', function (e) {
+                    const header = e.target.closest('.accordion-header-row');
+                    if (!header) return;
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        header.click();
+                    }
+                });
 
-            function addNewTab() {
-                var tabContainer = document.getElementById("ydtb-tabs-settings");
-                var tabLinks = tabContainer.querySelector(".tab");
-                var tabContentsBox = tabContainer.querySelector("#tab-content-container"); // Select the box where tabs go
-                var tabContents = tabContentsBox.querySelectorAll(".tabcontent");
-                var newIndex = tabContents.length;
+                // Remove tab logic (event delegation)
+                container.addEventListener('click', function (e) {
+                    const removeBtn = e.target.closest('.remove-accordion-tab');
+                    if (!removeBtn) return;
+                    e.stopPropagation();
+                    const item = removeBtn.closest('.accordion-item');
+                    item.remove();
+                    // Open the first accordion if any remain
+                    const remainingRows = container.querySelectorAll('.accordion-header-row');
+                    if (remainingRows.length > 0) {
+                        remainingRows[0].setAttribute('aria-expanded', 'true');
+                        remainingRows[0].classList.add('open');
+                        const firstPanel = remainingRows[0].parentNode.querySelector('.accordion-panel');
+                        if (firstPanel) firstPanel.style.display = 'block';
+                    }
+                });
 
-                // Generate a slug for the new tab
-                var defaultName = "New Tab";
-                var defaultSlug = generateSlug(defaultName);
+                // Move tab up/down logic (event delegation)
+                container.addEventListener('click', function (e) {
+                    const btn = e.target.closest('.move-tab-up, .move-tab-down');
+                    if (!btn) return;
+                    e.stopPropagation();
+                    const isUp = btn.classList.contains('move-tab-up');
+                    const item = btn.closest('.accordion-item');
+                    const allItems = Array.from(container.querySelectorAll('.accordion-item'));
+                    const customItems = allItems.filter(i => i.querySelector('.remove-accordion-tab'));
 
-                // Create new tab button
-                var newTabButton = document.createElement("button");
-                newTabButton.className = "tablinks";
-                newTabButton.textContent = defaultName;
-                newTabButton.setAttribute("type", "button");
-                newTabButton.setAttribute("onclick", "openTab(event, 'tab-" + newIndex + "')");
-                newTabButton.style.marginRight = "5px";
-                tabLinks.insertBefore(newTabButton, tabLinks.lastElementChild);
+                    // Get current position
+                    const posInput = item.querySelector('.tab-position-input');
+                    let currentPos = parseInt(posInput.value, 10);
 
-                // Check if Elementor Pro is active
-                var isElementorProActive = <?php echo json_encode($this->is_elementor_active()); ?>;
+                    // Find all positions
+                    const positions = allItems.map(i => ({
+                        el: i,
+                        pos: parseInt(
+                            i.querySelector('.tab-position-input')
+                                ? i.querySelector('.tab-position-input').value
+                                : i.querySelector('span[style*="font-weight:bold"]').textContent,
+                            10
+                        ),
+                        isCustom: !!i.querySelector('.remove-accordion-tab')
+                    }));
 
-                // Create new tab content
-                var newTabContent = document.createElement("div");
-                newTabContent.id = "tab-" + newIndex;
-                newTabContent.className = "tabcontent";
-                newTabContent.innerHTML = `
-        <label>Name: <input type="text" name="ydtb_tabs[${newIndex}][name]" value="${defaultName}"></label>
-        <label>Slug: <input type="text" name="ydtb_tabs[${newIndex}][slug]" value="${defaultSlug}"></label>
+                    // Sort by position
+                    positions.sort((a, b) => a.pos - b.pos);
+
+                    // Find index of current item in sorted list
+                    const idx = positions.findIndex(p => p.el === item);
+
+                    // Find the next item in the desired direction
+                    let targetIdx = isUp ? idx - 1 : idx + 1;
+                    if (targetIdx < 0 || targetIdx >= positions.length) return;
+
+                    const target = positions[targetIdx];
+
+                    // Helper for animation
+                    function animateSwap(el1, el2) {
+                        el1.style.transition = 'background 0.2s';
+                        el2.style.transition = 'background 0.2s';
+                        el1.style.background = '#ffe082';
+                        el2.style.background = '#ffe082';
+                        setTimeout(() => {
+                            el1.style.background = '';
+                            el2.style.background = '';
+                        }, 300);
+                    }
+
+                    // Helper to recursively bump tabs
+                    function bumpTab(pos, dir) {
+                        // Find a custom tab at this position
+                        const bump = positions.find(p => p.isCustom && p.pos === pos);
+                        if (bump) {
+                            bumpTab(pos + dir, dir);
+                            // Update the bumped tab's position
+                            const bumpInput = bump.el.querySelector('.tab-position-input');
+                            bumpInput.value = pos + dir;
+                            const bumpHeader = bump.el.querySelector('span[style*="font-weight:bold"]');
+                            if (bumpHeader) bumpHeader.textContent = pos + dir;
+                        }
+                    }
+
+                    if (!target.isCustom) {
+                        // We're crossing a static tab, so bump the next custom tab (if any)
+                        let newPos = isUp ? target.pos - 1 : target.pos + 1;
+                        bumpTab(newPos, isUp ? -1 : 1);
+                        posInput.value = newPos;
+                        const headerPos = item.querySelector('span[style*="font-weight:bold"]');
+                        if (headerPos) headerPos.textContent = newPos;
+                        item.style.transition = 'background 0.2s';
+                        item.style.background = '#ffe082';
+                        setTimeout(() => {
+                            item.style.background = '';
+                        }, 300);
+
+                        // Move the item in the DOM to the correct position
+                        let inserted = false;
+                        for (let i = 0; i < allItems.length; i++) {
+                            const other = allItems[i];
+                            if (other === item) continue;
+                            let otherPos = parseInt(
+                                other.querySelector('.tab-position-input')
+                                    ? other.querySelector('.tab-position-input').value
+                                    : other.querySelector('span[style*="font-weight:bold"]').textContent,
+                                10
+                            );
+                            if (isUp && otherPos >= newPos) {
+                                container.insertBefore(item, other);
+                                inserted = true;
+                                break;
+                            }
+                            if (!isUp && otherPos > newPos) {
+                                container.insertBefore(item, other);
+                                inserted = true;
+                                break;
+                            }
+                        }
+                        if (!inserted) {
+                            container.appendChild(item);
+                        }
+                    } else {
+                        // Swap with the custom tab
+                        const targetPosInput = target.el.querySelector('.tab-position-input');
+                        const headerPosA = item.querySelector('span[style*="font-weight:bold"]');
+                        const headerPosB = target.el.querySelector('span[style*="font-weight:bold"]');
+                        const temp = posInput.value;
+                        posInput.value = targetPosInput.value;
+                        targetPosInput.value = temp;
+                        if (headerPosA && headerPosB) {
+                            const tempText = headerPosA.textContent;
+                            headerPosA.textContent = headerPosB.textContent;
+                            headerPosB.textContent = tempText;
+                        }
+                        animateSwap(item, target.el);
+                        if (isUp) {
+                            container.insertBefore(item, target.el);
+                        } else {
+                            if (target.el.nextSibling) {
+                                container.insertBefore(item, target.el.nextSibling);
+                            } else {
+                                container.appendChild(item);
+                            }
+                        }
+                    }
+                });
+
+                // Add new accordion tab
+                document.getElementById('add-accordion-tab').addEventListener('click', function () {
+                    var container = document.getElementById('accordion-container');
+                    var newIndex = container.querySelectorAll('.accordion-item').length;
+                    var isElementorProActive = <?php echo json_encode($this->is_elementor_active()); ?>;
+                    var savedSections = <?php echo json_encode($saved_sections); ?>;
+                    var sectionOptions = '<option value=""><?php _e('Select a section', 'ydtb-group-tabs'); ?></option>';
+                    for (var id in savedSections) {
+                        sectionOptions += '<option value="' + id + '">' + savedSections[id] + '</option>';
+                    }
+
+                    var item = document.createElement('div');
+                    item.className = 'accordion-item';
+                    // Find the next available position (after all current custom tabs)
+                    let maxPos = 0;
+                    container.querySelectorAll('.tab-position-input').forEach(function (input) {
+                        const val = parseInt(input.value, 10);
+                        if (!isNaN(val) && val > maxPos) maxPos = val;
+                    });
+                    let newPos = maxPos + 1;
+
+                    item.innerHTML = `
+    <div class="accordion-header-row" tabindex="0" aria-expanded="false">
+        <span class="accordion-title" style="flex:1 1 auto; text-align:left;">New Tab</span>
+        <span class="move-tab-buttons">
+            <button type="button" class="move-tab-up" title="<?php esc_attr_e('Move Up', 'ydtb-group-tabs'); ?>">&#8593;</button>
+            <button type="button" class="move-tab-down" title="<?php esc_attr_e('Move Down', 'ydtb-group-tabs'); ?>">&#8595;</button>
+        </span>
+        <button type="button" class="remove-accordion-tab" title="<?php esc_attr_e('Remove Tab', 'ydtb-group-tabs'); ?>">
+            <!-- SVG ... -->
+        </button>
+    </div>
+    <div class="accordion-panel" style="display: none;">
+        <label>Name: <input type="text" name="ydtb_tabs[${newIndex}][name]" value="New Tab"></label>
+        <label>Slug: <input type="text" name="ydtb_tabs[${newIndex}][slug]" value="new-tab"></label>
         <label>Type:
             <select name="ydtb_tabs[${newIndex}][type]" class="tab-type-selector" data-index="${newIndex}">
                 <option value="url_redirect">URL Redirect</option>
@@ -253,9 +618,7 @@ class GroupExtension extends \BP_Group_Extension
                 ${isElementorProActive ? '<option value="saved_section">Saved Section</option>' : ''}
             </select>
         </label>
-        <div class="tab-type-fields" id="fields-${newIndex}">
-            <!-- Fields will be dynamically added here -->
-        </div>
+        <div class="tab-type-fields" id="fields-${newIndex}"></div>
         <p><?php _e('Set who can see this tab.', 'ydtb-group-tabs'); ?></p>
         <select name="ydtb_tabs[${newIndex}][visibility]" style="width: 100%;">
             <option value="anyone"><?php _e('Anyone ( Public )', 'ydtb-group-tabs'); ?></option>
@@ -266,155 +629,80 @@ class GroupExtension extends \BP_Group_Extension
             <option value="noone"><?php _e('No One', 'ydtb-group-tabs'); ?></option>
         </select>
         <br><br>
-        <div style="text-align: right;">
-            <button type="button" style="background-color: #f44336;" onclick="removeTab(this)">Remove Tab</button>
-        </div>
-    `;
-                tabContentsBox.appendChild(newTabContent); // Append the new tab content to the box
+        <input type="hidden" class="tab-position-input" name="ydtb_tabs[${newIndex}][position]" value="${newPos}">
+    </div>
+`;
+                    container.appendChild(item);
 
-                // Open the new tab
-                openTab({ currentTarget: newTabButton }, "tab-" + newIndex);
+                    // Attach change handler and trigger for the new selector
+                    var newSelector = item.querySelector('.tab-type-selector');
+                    if (newSelector) {
+                        newSelector.addEventListener('change', handleTabTypeSelectorChange);
+                        newSelector.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
 
-                // Trigger the change event for all tab-type-selectors on initial load
-                document.querySelectorAll('.tab-type-selector').forEach(function (selector) {
-                    var event = new Event('change', { bubbles: true });
-                    selector.dispatchEvent(event);
+                    // Open the new accordion
+                    var row = item.querySelector('.accordion-header-row');
+                    if (row) {
+                        row.setAttribute('tabindex', '0');
+                        row.focus();
+                        row.click(); // This will trigger the event delegation and open the accordion
+                    }
                 });
-            }
 
-            function removeTab(button) {
-                var tabContent = button.closest('.tabcontent');
-                var tabId = tabContent.id;
-                var tabButton = document.querySelector(`.tablinks[onclick*="${tabId}"]`);
-
-                // Remove the tab content and button
-                tabContent.remove();
-                if (tabButton) tabButton.remove();
-
-                // After removing, show the first available tab
-                var remainingTabs = document.querySelectorAll('.tabcontent');
-                if (remainingTabs.length > 0) {
-                    var firstTab = remainingTabs[0];
-                    var firstTabId = firstTab.id;
-                    var firstTabButton = document.querySelector(`.tablinks[onclick*="${firstTabId}"]`);
-                    if (firstTabButton) {
-                        openTab({ currentTarget: firstTabButton }, firstTabId);
-                    }
-                }
-            }
-
-            document.addEventListener('input', function (e) {
-                if (e.target.name && e.target.name.includes('[name]')) {
-                    const nameInput = e.target;
-                    const index = nameInput.name.match(/\[(\d+)\]/)[1];
-                    const slugInput = document.querySelector(`input[name="ydtb_tabs[${index}][slug]"]`);
-                    const errorContainer = slugInput.nextElementSibling;
-
-                    // Only generate slug if the slug field does not have the data-user-edited attribute
-                    if (!slugInput.hasAttribute('data-user-edited')) {
-                        slugInput.value = generateSlug(nameInput.value);
-                    }
-
-                    // Validate slug
-                    const existingSlugs = Array.from(document.querySelectorAll('input[name*="[slug]"]'))
-                        .map(input => input.value)
-                        .filter(value => value !== slugInput.value);
-
-                    const errorMessage = validateSlug(slugInput.value, existingSlugs);
-
-                    if (errorMessage) {
-                        slugInput.style.borderColor = 'red';
-                        if (!errorContainer || !errorContainer.classList.contains('slug-error')) {
-                            const errorDiv = document.createElement('div');
-                            errorDiv.className = 'slug-error';
-                            errorDiv.style.color = 'red';
-                            errorDiv.textContent = errorMessage;
-                            slugInput.parentNode.appendChild(errorDiv);
-                        } else {
-                            errorContainer.textContent = errorMessage;
+                function handleTabTypeSelectorChange(e) {
+                    var selector = e.target;
+                    var index = selector.getAttribute('data-index');
+                    var value = selector.value;
+                    var fields = document.getElementById('fields-' + index);
+                    if (!fields) return;
+                    fields.innerHTML = '';
+                    if (value === 'saved_section') {
+                        var savedSections = <?php echo json_encode($saved_sections); ?>;
+                        var sectionOptions = '<option value=""><?php _e('Select a section', 'ydtb-group-tabs'); ?></option>';
+                        for (var id in savedSections) {
+                            sectionOptions += '<option value="' + id + '">' + savedSections[id] + '</option>';
                         }
-                    } else {
-                        slugInput.style.borderColor = '';
-                        if (errorContainer && errorContainer.classList.contains('slug-error')) {
-                            errorContainer.remove();
-                        }
+                        fields.innerHTML = `<label>Saved Section:
+                            <select name="ydtb_tabs[${index}][content]">${sectionOptions}</select>
+                        </label>`;
+                    } else if (value === 'url_redirect') {
+                        fields.innerHTML = `<label>Redirect URL: <input type="text" name="ydtb_tabs[${index}][content]"></label>`;
+                    } else if (value === 'shortcode') {
+                        fields.innerHTML = `<label>Shortcode: <input type="text" name="ydtb_tabs[${index}][content]"></label>`;
                     }
                 }
             });
 
-            document.addEventListener('focus', function (e) {
-                if (e.target.name && e.target.name.includes('[slug]')) {
-                    const slugInput = e.target;
-                    // Mark the slug field as manually edited when the user focuses on it
-                    slugInput.setAttribute('data-user-edited', 'true');
-                }
-            }, true);
-
-            document.addEventListener('blur', function (e) {
-                if (e.target.name && e.target.name.includes('[slug]')) {
-                    const slugInput = e.target;
-                    const errorContainer = slugInput.nextElementSibling;
-
-                    // Validate slug on blur
-                    const existingSlugs = Array.from(document.querySelectorAll('input[name*="[slug]"]'))
-                        .map(input => input.value)
-                        .filter(value => value !== slugInput.value);
-
-                    const errorMessage = validateSlug(slugInput.value, existingSlugs);
-
-                    if (errorMessage) {
-                        slugInput.style.borderColor = 'red';
-                        if (!errorContainer || !errorContainer.classList.contains('slug-error')) {
-                            const errorDiv = document.createElement('div');
-                            errorDiv.className = 'slug-error';
-                            errorDiv.style.color = 'red';
-                            errorDiv.textContent = errorMessage;
-                            slugInput.parentNode.appendChild(errorDiv);
-                        } else {
-                            errorContainer.textContent = errorMessage;
-                        }
-                    } else {
-                        slugInput.style.borderColor = '';
-                        if (errorContainer && errorContainer.classList.contains('slug-error')) {
-                            errorContainer.remove();
-                        }
+            function handleTabTypeSelectorChange(e) {
+                var selector = e.target;
+                var index = selector.getAttribute('data-index');
+                var value = selector.value;
+                var fields = document.getElementById('fields-' + index);
+                if (!fields) return;
+                fields.innerHTML = '';
+                if (value === 'saved_section') {
+                    var savedSections = <?php echo json_encode($saved_sections); ?>;
+                    var sectionOptions = '<option value=""><?php _e('Select a section', 'ydtb-group-tabs'); ?></option>';
+                    for (var id in savedSections) {
+                        sectionOptions += '<option value="' + id + '">' + savedSections[id] + '</option>';
                     }
+                    fields.innerHTML = `<label>Saved Section:
+                        <select name="ydtb_tabs[${index}][content]">${sectionOptions}</select>
+                    </label>`;
+                } else if (value === 'url_redirect') {
+                    fields.innerHTML = `<label>Redirect URL: <input type="text" name="ydtb_tabs[${index}][content]"></label>`;
+                } else if (value === 'shortcode') {
+                    fields.innerHTML = `<label>Shortcode: <input type="text" name="ydtb_tabs[${index}][content]"></label>`;
                 }
-            }, true);
+            }
 
-            document.addEventListener('change', function (e) {
-                if (e.target.classList.contains('tab-type-selector')) {
-                    var index = e.target.getAttribute('data-index');
-                    var fieldsContainer = document.getElementById('fields-' + index);
-                    fieldsContainer.innerHTML = '';
-
-                    if (e.target.value === 'saved_section') {
-                        fieldsContainer.innerHTML = `
-                            <label>Saved Section:
-                                <select name="ydtb_tabs[${index}][content]">
-                                    <option value=""><?php _e('Select a section', 'ydtb-group-tabs'); ?></option>
-                                    <?php foreach ($saved_sections as $section_id => $section_title): ?>
-                                        <option value="<?php echo esc_attr($section_id); ?>">
-                                            <?php echo esc_html($section_title); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </label>
-                        `;
-                    } else if (e.target.value === 'url_redirect') {
-                        fieldsContainer.innerHTML = `
-                            <label>Redirect URL: <input type="text" name="ydtb_tabs[${index}][content]"></label>
-                        `;
-                    } else if (e.target.value === 'shortcode') {
-                        fieldsContainer.innerHTML = `
-                            <label>Shortcode: <input type="text" name="ydtb_tabs[${index}][content]"></label>
-                        `;
-                    }
-                }
+            // Attach to all existing selectors
+            document.querySelectorAll('.tab-type-selector').forEach(function (selector) {
+                selector.addEventListener('change', handleTabTypeSelectorChange);
+                // Trigger once to show the correct field on load
+                selector.dispatchEvent(new Event('change', { bubbles: true }));
             });
-
-            // Open the first tab by default
-            openTab(event, 'tab-0');
         </script>
         <?php
     }
@@ -424,6 +712,12 @@ class GroupExtension extends \BP_Group_Extension
         $group_id = isset($group_id) ? $group_id : bp_get_current_group_id();
         $validation_errors = array();
 
+        // Save default tab slug
+        if (isset($_POST['ydtb_default_tab'])) {
+            $default_tab_slug = sanitize_title($_POST['ydtb_default_tab']);
+            groups_update_groupmeta($group_id, 'ydtb_default_tab', $default_tab_slug);
+        }
+
         if (isset($_POST['ydtb_tabs']) && is_array($_POST['ydtb_tabs'])) {
             $tabs_data = array();
 
@@ -432,6 +726,7 @@ class GroupExtension extends \BP_Group_Extension
                 $tab_type = sanitize_text_field($tab['type'] ?? '');
                 $tab_content = $tab['content'] ?? '';
                 $tab_visibility = sanitize_text_field($tab['visibility'] ?? 'anyone');
+                $tab_position = isset($tab['position']) ? intval($tab['position']) : 9999;
 
                 // Validate tab name
                 if (empty($tab_name)) {
@@ -454,10 +749,11 @@ class GroupExtension extends \BP_Group_Extension
                 if (empty($validation_errors)) {
                     $tabs_data[] = array(
                         'name' => $tab_name,
-                        'slug' => sanitize_title($tab['slug'] ?? ''), // Sanitize the slug
+                        'slug' => sanitize_title($tab['slug'] ?? ''),
                         'type' => $tab_type,
                         'content' => wp_kses_post($tab_content),
                         'visibility' => $tab_visibility,
+                        'position' => $tab_position, // <-- use 'position' as the key
                     );
                 }
             }
