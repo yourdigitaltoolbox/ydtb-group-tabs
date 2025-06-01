@@ -558,12 +558,13 @@ class GroupExtension extends \BP_Group_Extension
 
                 // Open the first accordion by default
                 const headerRows = container.querySelectorAll('.accordion-header-row');
-                if (headerRows.length > 0) {
-                    headerRows[0].setAttribute('aria-expanded', 'true');
-                    headerRows[0].classList.add('open');
-                    const firstPanel = headerRows[0].parentNode.querySelector('.accordion-panel');
-                    if (firstPanel) firstPanel.style.display = 'block';
-                }
+                // Remove or comment out this block to keep all accordions closed by default
+                // if (headerRows.length > 0) {
+                //     headerRows[0].setAttribute('aria-expanded', 'true');
+                //     headerRows[0].classList.add('open');
+                //     const firstPanel = headerRows[0].parentNode.querySelector('.accordion-panel');
+                //     if (firstPanel) firstPanel.style.display = 'block';
+                // }
             });
 
             // Add new accordion tab
