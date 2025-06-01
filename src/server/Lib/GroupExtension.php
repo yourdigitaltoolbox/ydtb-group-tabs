@@ -119,13 +119,17 @@ class GroupExtension extends \BP_Group_Extension
                 if (preg_match('/^' . preg_quote($current_group_slug, '/') . '\/[^\/]+$/', $key)) {
                     $slug = basename($key);
                     $is_custom = isset($custom_tabs_by_slug[$slug]);
+                    $custom_position = $is_custom && isset($custom_tabs_by_slug[$slug]['tab']['position'])
+                        ? intval($custom_tabs_by_slug[$slug]['tab']['position'])
+                        : (isset($nav_item->position) ? intval($nav_item->position) : 9999);
+
                     $all_tabs[] = [
                         'is_custom' => $is_custom,
                         'slug' => $slug,
                         'nav_item' => $nav_item,
                         'custom_tab' => $is_custom ? $custom_tabs_by_slug[$slug]['tab'] : null,
                         'custom_index' => $is_custom ? $custom_tabs_by_slug[$slug]['index'] : null,
-                        'position' => isset($nav_item->position) ? intval($nav_item->position) : 9999,
+                        'position' => $custom_position,
                     ];
                 }
             }
@@ -241,7 +245,7 @@ class GroupExtension extends \BP_Group_Extension
                                 </select>
                                 <br><br>
                                 <input type="hidden" class="tab-position-input" name="ydtb_tabs[<?php echo $index; ?>][position]"
-                                    value="<?php echo esc_attr($tab_info['position']); ?>">
+                                    value="<?php echo esc_attr($tab['position'] ?? $tab_info['position']); ?>">
                             </div>
                         </div>
                     <?php else: ?>
@@ -375,53 +379,60 @@ class GroupExtension extends \BP_Group_Extension
         </style>
 
         <script>
-            // Accordion logic
             document.addEventListener('DOMContentLoaded', function () {
-                const headerRows = document.querySelectorAll('.accordion-header-row');
-                headerRows.forEach((row, idx) => {
-                    row.addEventListener('click', function (e) {
-                        // Prevent toggle if clicking the remove button
-                        if (e.target.closest('.remove-accordion-tab')) return;
-                        headerRows.forEach((otherRow) => {
-                            const panel = otherRow.parentNode.querySelector('.accordion-panel');
-                            if (otherRow === row) {
-                                const expanded = row.getAttribute('aria-expanded') === 'true';
-                                row.setAttribute('aria-expanded', !expanded);
-                                row.classList.toggle('open', !expanded);
-                                if (panel) panel.style.display = expanded ? 'none' : 'block';
-                            } else {
-                                otherRow.setAttribute('aria-expanded', 'false');
-                                otherRow.classList.remove('open');
-                                if (panel) panel.style.display = 'none';
-                            }
-                        });
-                    });
-                    // Allow keyboard accessibility
-                    row.addEventListener('keydown', function (e) {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            row.click();
+                var container = document.getElementById('accordion-container');
+
+                // Accordion open/close logic (event delegation)
+                container.addEventListener('click', function (e) {
+                    const header = e.target.closest('.accordion-header-row');
+                    if (!header) return;
+                    // Prevent toggle if clicking the remove or move buttons
+                    if (e.target.closest('.remove-accordion-tab') || e.target.closest('.move-tab-up') || e.target.closest('.move-tab-down')) return;
+                    const allHeaders = container.querySelectorAll('.accordion-header-row');
+                    allHeaders.forEach(function (row) {
+                        const panel = row.parentNode.querySelector('.accordion-panel');
+                        if (row === header) {
+                            const expanded = row.getAttribute('aria-expanded') === 'true';
+                            row.setAttribute('aria-expanded', !expanded);
+                            row.classList.toggle('open', !expanded);
+                            if (panel) panel.style.display = expanded ? 'none' : 'block';
+                        } else {
+                            row.setAttribute('aria-expanded', 'false');
+                            row.classList.remove('open');
+                            if (panel) panel.style.display = 'none';
                         }
                     });
-                    // Remove tab logic
-                    const removeBtn = row.querySelector('.remove-accordion-tab');
-                    if (removeBtn) {
-                        removeBtn.addEventListener('click', function (e) {
-                            e.stopPropagation();
-                            const item = row.closest('.accordion-item');
-                            item.remove();
-                            // Open the first accordion if any remain
-                            const remainingRows = document.querySelectorAll('.accordion-header-row');
-                            if (remainingRows.length > 0) {
-                                remainingRows[0].setAttribute('aria-expanded', 'true');
-                                remainingRows[0].classList.add('open');
-                                const firstPanel = remainingRows[0].parentNode.querySelector('.accordion-panel');
-                                if (firstPanel) firstPanel.style.display = 'block';
-                            }
-                        });
+                });
+
+                // Keyboard accessibility for accordion
+                container.addEventListener('keydown', function (e) {
+                    const header = e.target.closest('.accordion-header-row');
+                    if (!header) return;
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        header.click();
                     }
                 });
+
+                // Remove tab logic (event delegation)
+                container.addEventListener('click', function (e) {
+                    const removeBtn = e.target.closest('.remove-accordion-tab');
+                    if (!removeBtn) return;
+                    e.stopPropagation();
+                    const item = removeBtn.closest('.accordion-item');
+                    item.remove();
+                    // Open the first accordion if any remain
+                    const remainingRows = container.querySelectorAll('.accordion-header-row');
+                    if (remainingRows.length > 0) {
+                        remainingRows[0].setAttribute('aria-expanded', 'true');
+                        remainingRows[0].classList.add('open');
+                        const firstPanel = remainingRows[0].parentNode.querySelector('.accordion-panel');
+                        if (firstPanel) firstPanel.style.display = 'block';
+                    }
+                });
+
                 // Open the first accordion by default
+                const headerRows = container.querySelectorAll('.accordion-header-row');
                 if (headerRows.length > 0) {
                     headerRows[0].setAttribute('aria-expanded', 'true');
                     headerRows[0].classList.add('open');
@@ -786,6 +797,43 @@ class GroupExtension extends \BP_Group_Extension
                     }
                 });
             });
+
+            function handleTabTypeSelectorChange(e) {
+                var selector = e.target;
+                var index = selector.getAttribute('data-index');
+                var value = selector.value;
+                var fields = document.getElementById('fields-' + index);
+                if (!fields) return;
+                fields.innerHTML = '';
+                if (value === 'saved_section') {
+                    var savedSections = <?php echo json_encode($saved_sections); ?>;
+                    var sectionOptions = '<option value=""><?php _e('Select a section', 'ydtb-group-tabs'); ?></option>';
+                    for (var id in savedSections) {
+                        sectionOptions += '<option value="' + id + '">' + savedSections[id] + '</option>';
+                    }
+                    fields.innerHTML = `<label>Saved Section:
+                        <select name="ydtb_tabs[${index}][content]">${sectionOptions}</select>
+                    </label>`;
+                } else if (value === 'url_redirect') {
+                    fields.innerHTML = `<label>Redirect URL: <input type="text" name="ydtb_tabs[${index}][content]"></label>`;
+                } else if (value === 'shortcode') {
+                    fields.innerHTML = `<label>Shortcode: <input type="text" name="ydtb_tabs[${index}][content]"></label>`;
+                }
+            }
+
+            // Attach to all existing selectors
+            document.querySelectorAll('.tab-type-selector').forEach(function (selector) {
+                selector.addEventListener('change', handleTabTypeSelectorChange);
+                // Trigger once to show the correct field on load
+                selector.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+
+            // After appending the new item:
+            var newSelector = item.querySelector('.tab-type-selector');
+            if (newSelector) {
+                newSelector.addEventListener('change', handleTabTypeSelectorChange);
+                newSelector.dispatchEvent(new Event('change', { bubbles: true }));
+            }
         </script>
         <?php
     }
@@ -826,11 +874,11 @@ class GroupExtension extends \BP_Group_Extension
                 if (empty($validation_errors)) {
                     $tabs_data[] = array(
                         'name' => $tab_name,
-                        'slug' => sanitize_title($tab['slug'] ?? ''), // Sanitize the slug
+                        'slug' => sanitize_title($tab['slug'] ?? ''),
                         'type' => $tab_type,
                         'content' => wp_kses_post($tab_content),
                         'visibility' => $tab_visibility,
-                        'tab_position' => $tab_position,
+                        'position' => $tab_position, // <-- use 'position' as the key
                     );
                 }
             }
