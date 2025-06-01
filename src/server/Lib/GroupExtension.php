@@ -105,9 +105,10 @@ class GroupExtension extends \BP_Group_Extension
             <div id="accordion-container">
                 <?php foreach ($group_meta as $index => $tab): ?>
                     <div class="accordion-item">
-                        <button type="button" class="accordion-header" aria-expanded="false">
-                            <?php echo esc_html($tab['name']); ?>
-                        </button>
+                        <div class="accordion-header-row" tabindex="0" aria-expanded="false">
+                            <span class="accordion-title"><?php echo esc_html($tab['name']); ?></span>
+                            <span class="chevron">&#9654;</span>
+                        </div>
                         <div class="accordion-panel" style="display: none;">
                             <label>Name: <input type="text" name="ydtb_tabs[<?php echo $index; ?>][name]"
                                     value="<?php echo esc_attr($tab['name']); ?>"></label>
@@ -184,53 +185,96 @@ class GroupExtension extends \BP_Group_Extension
         </div>
 
         <style>
-            .accordion-header {
-                width: 100%;
-                text-align: left;
-                padding: 12px 16px;
-                background: #f1f1f1;
-                border: none;
-                outline: none;
-                cursor: pointer;
-                font-size: 16px;
-                border-bottom: 1px solid #ddd;
-                transition: background 0.2s;
+            .accordion-item {
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                margin-bottom: 14px;
+                background: #fafbfc;
+                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+                padding: 0;
             }
 
-            .accordion-header[aria-expanded="true"] {
+            .accordion-header-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                width: 100%;
+                border-radius: 6px 6px 0 0;
+                background: #f1f1f1;
+                border-bottom: 1px solid #ddd;
+                transition: background 0.2s;
+                cursor: pointer;
+                padding: 12px 16px;
+                outline: none;
+            }
+
+            .accordion-header-row[aria-expanded="true"] {
                 background: #e2e2e2;
+            }
+
+            .accordion-title {
+                flex: 1 1 auto;
+                text-align: left;
+                font-size: 16px;
+                font-weight: 500;
+                color: #222;
+            }
+
+            .chevron {
+                flex: 0 0 auto;
+                display: inline-block;
+                transition: transform 0.2s;
+                margin-left: 16px;
+                font-size: 18px;
+                color: #888;
+            }
+
+            .accordion-header-row[aria-expanded="true"] .chevron {
+                transform: rotate(90deg);
             }
 
             .accordion-panel {
                 padding: 16px;
-                border-bottom: 1px solid #ddd;
+                border-bottom: none;
                 background: #fff;
+                border-radius: 0 0 6px 6px;
             }
         </style>
 
         <script>
             // Accordion logic
             document.addEventListener('DOMContentLoaded', function () {
-                const headers = document.querySelectorAll('.accordion-header');
-                headers.forEach((header, idx) => {
-                    header.addEventListener('click', function () {
-                        headers.forEach((h, i) => {
-                            const panel = h.nextElementSibling;
-                            if (h === header) {
-                                const expanded = h.getAttribute('aria-expanded') === 'true';
-                                h.setAttribute('aria-expanded', !expanded);
-                                panel.style.display = expanded ? 'none' : 'block';
+                const headerRows = document.querySelectorAll('.accordion-header-row');
+                headerRows.forEach((row, idx) => {
+                    row.addEventListener('click', function () {
+                        headerRows.forEach((otherRow) => {
+                            const panel = otherRow.parentNode.querySelector('.accordion-panel');
+                            if (otherRow === row) {
+                                const expanded = row.getAttribute('aria-expanded') === 'true';
+                                row.setAttribute('aria-expanded', !expanded);
+                                row.classList.toggle('open', !expanded);
+                                if (panel) panel.style.display = expanded ? 'none' : 'block';
                             } else {
-                                h.setAttribute('aria-expanded', 'false');
-                                panel.style.display = 'none';
+                                otherRow.setAttribute('aria-expanded', 'false');
+                                otherRow.classList.remove('open');
+                                if (panel) panel.style.display = 'none';
                             }
                         });
                     });
+                    // Allow keyboard accessibility
+                    row.addEventListener('keydown', function (e) {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            row.click();
+                        }
+                    });
                 });
                 // Open the first accordion by default
-                if (headers.length > 0) {
-                    headers[0].setAttribute('aria-expanded', 'true');
-                    headers[0].nextElementSibling.style.display = 'block';
+                if (headerRows.length > 0) {
+                    headerRows[0].setAttribute('aria-expanded', 'true');
+                    headerRows[0].classList.add('open');
+                    const firstPanel = headerRows[0].parentNode.querySelector('.accordion-panel');
+                    if (firstPanel) firstPanel.style.display = 'block';
                 }
             });
 
@@ -248,7 +292,10 @@ class GroupExtension extends \BP_Group_Extension
                 var item = document.createElement('div');
                 item.className = 'accordion-item';
                 item.innerHTML = `
-                    <button type="button" class="accordion-header" aria-expanded="false">New Tab</button>
+                    <div class="accordion-header-row" tabindex="0" aria-expanded="false">
+                        <span class="accordion-title">New Tab</span>
+                        <span class="chevron">&#9654;</span>
+                    </div>
                     <div class="accordion-panel" style="display: none;">
                         <label>Name: <input type="text" name="ydtb_tabs[${newIndex}][name]" value="New Tab"></label>
                         <label>Slug: <input type="text" name="ydtb_tabs[${newIndex}][slug]" value="new-tab"></label>
@@ -279,6 +326,8 @@ class GroupExtension extends \BP_Group_Extension
 
                 // Re-attach accordion logic
                 var header = item.querySelector('.accordion-header');
+                var row = item.querySelector('.accordion-header-row');
+                var chevron = item.querySelector('.chevron');
                 header.addEventListener('click', function () {
                     var headers = document.querySelectorAll('.accordion-header');
                     headers.forEach((h) => {
@@ -286,9 +335,11 @@ class GroupExtension extends \BP_Group_Extension
                         if (h === header) {
                             const expanded = h.getAttribute('aria-expanded') === 'true';
                             h.setAttribute('aria-expanded', !expanded);
+                            row.classList.toggle('open', !expanded);
                             panel.style.display = expanded ? 'none' : 'block';
                         } else {
                             h.setAttribute('aria-expanded', 'false');
+                            h.parentNode.classList.remove('open');
                             panel.style.display = 'none';
                         }
                     });
@@ -303,150 +354,6 @@ class GroupExtension extends \BP_Group_Extension
                     selector.dispatchEvent(event);
                 });
             });
-
-            // Remove accordion tab
-            function removeAccordionTab(button) {
-                var item = button.closest('.accordion-item');
-                item.remove();
-                // Open the first accordion if any remain
-                var headers = document.querySelectorAll('.accordion-header');
-                if (headers.length > 0) {
-                    headers[0].setAttribute('aria-expanded', 'true');
-                    headers[0].nextElementSibling.style.display = 'block';
-                }
-            }
-            window.removeAccordionTab = removeAccordionTab;
-
-            function generateSlug(name) {
-                // Convert spaces to dashes and remove invalid characters
-                return name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '');
-            }
-
-            function validateSlug(slug, existingSlugs) {
-                if (!slug.trim()) {
-                    return 'Slug cannot be empty.';
-                }
-                if (!/^[a-z0-9-_]+$/.test(slug)) {
-                    return 'Slug can only contain letters, numbers, underscores, and dashes.';
-                }
-                if (existingSlugs.includes(slug)) {
-                    return 'Slug must be unique.';
-                }
-                return '';
-            }
-
-            document.addEventListener('input', function (e) {
-                if (e.target.name && e.target.name.includes('[name]')) {
-                    const nameInput = e.target;
-                    const index = nameInput.name.match(/\[(\d+)\]/)[1];
-                    const slugInput = document.querySelector(`input[name="ydtb_tabs[${index}][slug]"]`);
-                    const errorContainer = slugInput.nextElementSibling;
-
-                    // Only generate slug if the slug field does not have the data-user-edited attribute
-                    if (!slugInput.hasAttribute('data-user-edited')) {
-                        slugInput.value = generateSlug(nameInput.value);
-                    }
-
-                    // Validate slug
-                    const existingSlugs = Array.from(document.querySelectorAll('input[name*="[slug]"]'))
-                        .map(input => input.value)
-                        .filter(value => value !== slugInput.value);
-
-                    const errorMessage = validateSlug(slugInput.value, existingSlugs);
-
-                    if (errorMessage) {
-                        slugInput.style.borderColor = 'red';
-                        if (!errorContainer || !errorContainer.classList.contains('slug-error')) {
-                            const errorDiv = document.createElement('div');
-                            errorDiv.className = 'slug-error';
-                            errorDiv.style.color = 'red';
-                            errorDiv.textContent = errorMessage;
-                            slugInput.parentNode.appendChild(errorDiv);
-                        } else {
-                            errorContainer.textContent = errorMessage;
-                        }
-                    } else {
-                        slugInput.style.borderColor = '';
-                        if (errorContainer && errorContainer.classList.contains('slug-error')) {
-                            errorContainer.remove();
-                        }
-                    }
-                }
-            });
-
-            document.addEventListener('focus', function (e) {
-                if (e.target.name && e.target.name.includes('[slug]')) {
-                    const slugInput = e.target;
-                    // Mark the slug field as manually edited when the user focuses on it
-                    slugInput.setAttribute('data-user-edited', 'true');
-                }
-            }, true);
-
-            document.addEventListener('blur', function (e) {
-                if (e.target.name && e.target.name.includes('[slug]')) {
-                    const slugInput = e.target;
-                    const errorContainer = slugInput.nextElementSibling;
-
-                    // Validate slug on blur
-                    const existingSlugs = Array.from(document.querySelectorAll('input[name*="[slug]"]'))
-                        .map(input => input.value)
-                        .filter(value => value !== slugInput.value);
-
-                    const errorMessage = validateSlug(slugInput.value, existingSlugs);
-
-                    if (errorMessage) {
-                        slugInput.style.borderColor = 'red';
-                        if (!errorContainer || !errorContainer.classList.contains('slug-error')) {
-                            const errorDiv = document.createElement('div');
-                            errorDiv.className = 'slug-error';
-                            errorDiv.style.color = 'red';
-                            errorDiv.textContent = errorMessage;
-                            slugInput.parentNode.appendChild(errorDiv);
-                        } else {
-                            errorContainer.textContent = errorMessage;
-                        }
-                    } else {
-                        slugInput.style.borderColor = '';
-                        if (errorContainer && errorContainer.classList.contains('slug-error')) {
-                            errorContainer.remove();
-                        }
-                    }
-                }
-            }, true);
-
-            document.addEventListener('change', function (e) {
-                if (e.target.classList.contains('tab-type-selector')) {
-                    var index = e.target.getAttribute('data-index');
-                    var fieldsContainer = document.getElementById('fields-' + index);
-                    fieldsContainer.innerHTML = '';
-
-                    if (e.target.value === 'saved_section') {
-                        fieldsContainer.innerHTML = `
-                            <label>Saved Section:
-                                <select name="ydtb_tabs[${index}][content]">
-                                    <option value=""><?php _e('Select a section', 'ydtb-group-tabs'); ?></option>
-                                    <?php foreach ($saved_sections as $section_id => $section_title): ?>
-                                        <option value="<?php echo esc_attr($section_id); ?>">
-                                            <?php echo esc_html($section_title); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </label>
-                        `;
-                    } else if (e.target.value === 'url_redirect') {
-                        fieldsContainer.innerHTML = `
-                            <label>Redirect URL: <input type="text" name="ydtb_tabs[${index}][content]"></label>
-                        `;
-                    } else if (e.target.value === 'shortcode') {
-                        fieldsContainer.innerHTML = `
-                            <label>Shortcode: <input type="text" name="ydtb_tabs[${index}][content]"></label>
-                        `;
-                    }
-                }
-            });
-
-            // Open the first accordion by default
-            openTab(event, 'tab-0');
         </script>
         <?php
     }
