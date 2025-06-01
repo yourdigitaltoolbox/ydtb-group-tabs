@@ -275,6 +275,8 @@ class GroupExtension extends \BP_Group_Extension
                                     </span>
                                 </div>
                             </div>
+                            <!-- Add this hidden input for static tabs -->
+                            <input type="hidden" class="tab-position-input" value="<?php echo esc_attr($tab_info['position']); ?>">
                         </div>
                     <?php endif; ?>
                 <?php endforeach; ?>
@@ -466,7 +468,7 @@ class GroupExtension extends \BP_Group_Extension
                         pos: parseInt(
                             i.querySelector('.tab-position-input')
                                 ? i.querySelector('.tab-position-input').value
-                                : i.querySelector('span[style*="font-weight:bold"]').textContent,
+                                : '9999',
                             10
                         ),
                         isCustom: !!i.querySelector('.remove-accordion-tab')
@@ -505,8 +507,7 @@ class GroupExtension extends \BP_Group_Extension
                             // Update the bumped tab's position
                             const bumpInput = bump.el.querySelector('.tab-position-input');
                             bumpInput.value = pos + dir;
-                            const bumpHeader = bump.el.querySelector('span[style*="font-weight:bold"]');
-                            if (bumpHeader) bumpHeader.textContent = pos + dir;
+                            // No need to update any visible span
                         }
                     }
 
@@ -515,8 +516,7 @@ class GroupExtension extends \BP_Group_Extension
                         let newPos = isUp ? target.pos - 1 : target.pos + 1;
                         bumpTab(newPos, isUp ? -1 : 1);
                         posInput.value = newPos;
-                        const headerPos = item.querySelector('span[style*="font-weight:bold"]');
-                        if (headerPos) headerPos.textContent = newPos;
+                        // No need to update any visible span
                         item.style.transition = 'background 0.2s';
                         item.style.background = '#ffe082';
                         setTimeout(() => {
@@ -531,7 +531,7 @@ class GroupExtension extends \BP_Group_Extension
                             let otherPos = parseInt(
                                 other.querySelector('.tab-position-input')
                                     ? other.querySelector('.tab-position-input').value
-                                    : other.querySelector('span[style*="font-weight:bold"]').textContent,
+                                    : '9999',
                                 10
                             );
                             if (isUp && otherPos >= newPos) {
@@ -551,16 +551,11 @@ class GroupExtension extends \BP_Group_Extension
                     } else {
                         // Swap with the custom tab
                         const targetPosInput = target.el.querySelector('.tab-position-input');
-                        const headerPosA = item.querySelector('span[style*="font-weight:bold"]');
-                        const headerPosB = target.el.querySelector('span[style*="font-weight:bold"]');
+                        // Swap values
                         const temp = posInput.value;
                         posInput.value = targetPosInput.value;
                         targetPosInput.value = temp;
-                        if (headerPosA && headerPosB) {
-                            const tempText = headerPosA.textContent;
-                            headerPosA.textContent = headerPosB.textContent;
-                            headerPosB.textContent = tempText;
-                        }
+                        // No need to update any visible span
                         animateSwap(item, target.el);
                         if (isUp) {
                             container.insertBefore(item, target.el);
@@ -697,7 +692,7 @@ class GroupExtension extends \BP_Group_Extension
                             pos: parseInt(
                                 i.querySelector('.tab-position-input')
                                     ? i.querySelector('.tab-position-input').value
-                                    : i.querySelector('span[style*="font-weight:bold"]').textContent,
+                                    : '9999',
                                 10
                             ),
                             isCustom: !!i.querySelector('.remove-accordion-tab')
@@ -736,8 +731,7 @@ class GroupExtension extends \BP_Group_Extension
                                 // Update the bumped tab's position
                                 const bumpInput = bump.el.querySelector('.tab-position-input');
                                 bumpInput.value = pos + dir;
-                                const bumpHeader = bump.el.querySelector('span[style*="font-weight:bold"]');
-                                if (bumpHeader) bumpHeader.textContent = pos + dir;
+                                // No need to update any visible span
                             }
                         }
 
@@ -746,8 +740,7 @@ class GroupExtension extends \BP_Group_Extension
                             let newPos = isUp ? target.pos - 1 : target.pos + 1;
                             bumpTab(newPos, isUp ? -1 : 1);
                             posInput.value = newPos;
-                            const headerPos = item.querySelector('span[style*="font-weight:bold"]');
-                            if (headerPos) headerPos.textContent = newPos;
+                            // No need to update any visible span
                             item.style.transition = 'background 0.2s';
                             item.style.background = '#ffe082';
                             setTimeout(() => {
@@ -763,7 +756,7 @@ class GroupExtension extends \BP_Group_Extension
                                 let otherPos = parseInt(
                                     other.querySelector('.tab-position-input')
                                         ? other.querySelector('.tab-position-input').value
-                                        : other.querySelector('span[style*="font-weight:bold"]').textContent,
+                                        : '9999',
                                     10
                                 );
                                 if (isUp && otherPos >= newPos) {
@@ -783,18 +776,11 @@ class GroupExtension extends \BP_Group_Extension
                         } else {
                             // Swap with the custom tab
                             const targetPosInput = target.el.querySelector('.tab-position-input');
-                            const headerPosA = item.querySelector('span[style*="font-weight:bold"]');
-                            const headerPosB = target.el.querySelector('span[style*="font-weight:bold"]');
                             // Swap values
                             const temp = posInput.value;
                             posInput.value = targetPosInput.value;
                             targetPosInput.value = temp;
-                            if (headerPosA && headerPosB) {
-                                const tempText = headerPosA.textContent;
-                                headerPosA.textContent = headerPosB.textContent;
-                                headerPosB.textContent = tempText;
-                            }
-                            // Animate swap
+                            // No need to update any visible span
                             animateSwap(item, target.el);
                             // Swap DOM order
                             if (isUp) {
@@ -810,12 +796,11 @@ class GroupExtension extends \BP_Group_Extension
                     });
                 });
 
-                // After container.appendChild(item);
-                var row = item.querySelector('.accordion-header-row');
-                if (row) {
-                    row.setAttribute('tabindex', '0');
-                    row.focus();
-                    row.click(); // This will trigger the event delegation and open the accordion
+                // After appending the new item:
+                var newSelector = item.querySelector('.tab-type-selector');
+                if (newSelector) {
+                    newSelector.addEventListener('change', handleTabTypeSelectorChange);
+                    newSelector.dispatchEvent(new Event('change', { bubbles: true }));
                 }
             });
 
@@ -838,7 +823,7 @@ class GroupExtension extends \BP_Group_Extension
                         pos: parseInt(
                             i.querySelector('.tab-position-input')
                                 ? i.querySelector('.tab-position-input').value
-                                : i.querySelector('span[style*="font-weight:bold"]').textContent,
+                                : '9999',
                             10
                         ),
                         isCustom: !!i.querySelector('.remove-accordion-tab')
@@ -877,8 +862,7 @@ class GroupExtension extends \BP_Group_Extension
                             // Update the bumped tab's position
                             const bumpInput = bump.el.querySelector('.tab-position-input');
                             bumpInput.value = pos + dir;
-                            const bumpHeader = bump.el.querySelector('span[style*="font-weight:bold"]');
-                            if (bumpHeader) bumpHeader.textContent = pos + dir;
+                            // No need to update any visible span
                         }
                     }
 
@@ -887,8 +871,7 @@ class GroupExtension extends \BP_Group_Extension
                         let newPos = isUp ? target.pos - 1 : target.pos + 1;
                         bumpTab(newPos, isUp ? -1 : 1);
                         posInput.value = newPos;
-                        const headerPos = item.querySelector('span[style*="font-weight:bold"]');
-                        if (headerPos) headerPos.textContent = newPos;
+                        // No need to update any visible span
                         item.style.transition = 'background 0.2s';
                         item.style.background = '#ffe082';
                         setTimeout(() => {
@@ -904,7 +887,7 @@ class GroupExtension extends \BP_Group_Extension
                             let otherPos = parseInt(
                                 other.querySelector('.tab-position-input')
                                     ? other.querySelector('.tab-position-input').value
-                                    : other.querySelector('span[style*="font-weight:bold"]').textContent,
+                                    : '9999',
                                 10
                             );
                             if (isUp && otherPos >= newPos) {
@@ -924,18 +907,11 @@ class GroupExtension extends \BP_Group_Extension
                     } else {
                         // Swap with the custom tab
                         const targetPosInput = target.el.querySelector('.tab-position-input');
-                        const headerPosA = item.querySelector('span[style*="font-weight:bold"]');
-                        const headerPosB = target.el.querySelector('span[style*="font-weight:bold"]');
                         // Swap values
                         const temp = posInput.value;
                         posInput.value = targetPosInput.value;
                         targetPosInput.value = temp;
-                        if (headerPosA && headerPosB) {
-                            const tempText = headerPosA.textContent;
-                            headerPosA.textContent = headerPosB.textContent;
-                            headerPosB.textContent = tempText;
-                        }
-                        // Animate swap
+                        // No need to update any visible span
                         animateSwap(item, target.el);
                         // Swap DOM order
                         if (isUp) {
@@ -949,6 +925,13 @@ class GroupExtension extends \BP_Group_Extension
                         }
                     }
                 });
+
+                // After appending the new item:
+                var newSelector = item.querySelector('.tab-type-selector');
+                if (newSelector) {
+                    newSelector.addEventListener('change', handleTabTypeSelectorChange);
+                    newSelector.dispatchEvent(new Event('change', { bubbles: true }));
+                }
             });
 
             function handleTabTypeSelectorChange(e) {
@@ -980,13 +963,6 @@ class GroupExtension extends \BP_Group_Extension
                 // Trigger once to show the correct field on load
                 selector.dispatchEvent(new Event('change', { bubbles: true }));
             });
-
-            // After appending the new item:
-            var newSelector = item.querySelector('.tab-type-selector');
-            if (newSelector) {
-                newSelector.addEventListener('change', handleTabTypeSelectorChange);
-                newSelector.dispatchEvent(new Event('change', { bubbles: true }));
-            }
         </script>
         <?php
     }
