@@ -66,6 +66,15 @@ class GroupAccess extends BP_Group_Extension
             $button_text = __('Sign Up to Join', 'buddyboss');
         }
         ?>
+        <h3>YDTB External Signup</h3>
+        <p>
+            If you provide a URL and button text below, the default group join action will be replaced. Instead of the usual
+            request access button for private groups, users will be redirected to your specified page when they click the
+            button. This is useful for sending users to a sign-up or sales page, where you can set up your own automation to add
+            them to the group after they complete your process.<br><br>
+            <strong>Please note:</strong> The automation for adding users to the group after signup is up to you. This setting
+            only changes the button’s behavior.
+        </p>
         <label for="ydtb_signup_url">External Signup URL (optional):</label>
         <input type="url" name="ydtb_signup_url" id="ydtb_signup_url" value="<?php echo esc_attr($signup_url); ?>"
             style="width:100%;" />
