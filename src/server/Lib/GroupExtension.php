@@ -102,8 +102,10 @@ class GroupExtension extends \BP_Group_Extension
         $saved_sections = $this->is_elementor_active() ? $this->get_saved_sections() : [];
 
         global $bp;
-        $current_group_slug = $bp->groups->current_group->slug;
-        $group_nav = $bp->groups->nav->get();
+        $current_group_slug = bp_get_current_group_slug();
+        $group_nav = (isset($bp->groups->nav) && is_object($bp->groups->nav) && method_exists($bp->groups->nav, 'get'))
+            ? $bp->groups->nav->get()
+            : [];
 
         // Build a lookup for custom tabs by slug for easy matching
         $custom_tabs_by_slug = [];

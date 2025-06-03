@@ -78,7 +78,9 @@ class Plugin
         if (bp_is_active('groups')) {
             // Register the group extension
             require(dirname(__FILE__) . '/server/Lib/GroupExtension.php');
+            require(dirname(__FILE__) . '/server/Lib/GroupAccess.php');
             bp_register_group_extension('GroupExtension');
+            bp_register_group_extension('GroupAccess');
         }
     }
 
