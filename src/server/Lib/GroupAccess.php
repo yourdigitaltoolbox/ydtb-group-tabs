@@ -24,8 +24,12 @@ class GroupAccess extends BP_Group_Extension
             && empty($group->is_invited)
             && empty($group->is_pending)
         ) {
-            // Get the group-specific signup URL
+            // Get the group-specific signup URL and button text
             $signup_url = groups_get_groupmeta($group->id, 'ydtb_signup_url', true);
+            $button_text = groups_get_groupmeta($group->id, 'ydtb_signup_button_text', true);
+            if (empty($button_text)) {
+                $button_text = __('Sign Up to Join', 'buddyboss');
+            }
             if (!empty($signup_url)) {
                 $button = array(
                     'id' => 'external_signup',
@@ -35,7 +39,7 @@ class GroupAccess extends BP_Group_Extension
                     'wrapper_class' => 'group-button ' . $group->status,
                     'wrapper_id' => 'groupbutton-' . $group->id,
                     'link_href' => $signup_url,
-                    'link_text' => __('Sign Up to Join', 'buddyboss'),
+                    'link_text' => $button_text,
                     'link_class' => 'group-button external-signup',
                     'button_attr' => array(
                         'onclick' => "window.location.href='" . esc_url($signup_url) . "'; return false;",
@@ -57,10 +61,18 @@ class GroupAccess extends BP_Group_Extension
     public function edit_screen($group_id = null)
     {
         $signup_url = groups_get_groupmeta($group_id, 'ydtb_signup_url', true);
+        $button_text = groups_get_groupmeta($group_id, 'ydtb_signup_button_text', true);
+        if (empty($button_text)) {
+            $button_text = __('Sign Up to Join', 'buddyboss');
+        }
         ?>
         <label for="ydtb_signup_url">External Signup URL (optional):</label>
         <input type="url" name="ydtb_signup_url" id="ydtb_signup_url" value="<?php echo esc_attr($signup_url); ?>"
             style="width:100%;" />
+        <br><br>
+        <label for="ydtb_signup_button_text">Signup Button Text (optional):</label>
+        <input type="text" name="ydtb_signup_button_text" id="ydtb_signup_button_text"
+            value="<?php echo esc_attr($button_text); ?>" style="width:100%;" />
         <?php
     }
 
@@ -68,6 +80,9 @@ class GroupAccess extends BP_Group_Extension
     {
         if (isset($_POST['ydtb_signup_url'])) {
             groups_update_groupmeta($group_id, 'ydtb_signup_url', esc_url_raw($_POST['ydtb_signup_url']));
+        }
+        if (isset($_POST['ydtb_signup_button_text'])) {
+            groups_update_groupmeta($group_id, 'ydtb_signup_button_text', sanitize_text_field($_POST['ydtb_signup_button_text']));
         }
     }
 }
