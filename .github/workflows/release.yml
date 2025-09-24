@@ -10,16 +10,6 @@ on:
           - patch
           - minor
           - major
-          - prepatch
-          - preminor
-          - premajor
-      prerelease-id:
-        type: choice
-        description: Prerelease ID
-        options:
-          - alpha
-          - beta
-          - rc
 
 permissions:
   contents: write
@@ -66,27 +56,13 @@ jobs:
 
       - name: Set Update Version Flags
         run: |
-          if [[ "${{ inputs.bump_level }}" == pre* ]]; then
-            if [[ "${{ env.CURRENT_VERSION }}" == *-* ]]; then
-              echo "PRE_RELEASE=--preRelease" >> $GITHUB_ENV
-              echo "BUMP_LEVEL=" >> $GITHUB_ENV
-              echo "PRE_RELEASE_ID=" >> $GITHUB_ENV
-            else
-              echo "PRE_RELEASE=" >> $GITHUB_ENV
-              echo "BUMP_LEVEL=${{ inputs.bump_level }}" >> $GITHUB_ENV
-              echo "PRE_RELEASE_ID=--preReleaseId=${{ inputs.prerelease-id }}" >> $GITHUB_ENV
-            fi
-          else
-            echo "PRE_RELEASE=" >> $GITHUB_ENV
-            echo "BUMP_LEVEL=${{ inputs.bump_level }}" >> $GITHUB_ENV
-            echo "PRE_RELEASE_ID=" >> $GITHUB_ENV
-          fi
+          echo "BUMP_LEVEL=${{ inputs.bump_level }}" >> $GITHUB_ENV
 
       - name: Capture Update Version
         id: capture_release_version
         run: |
           cd release
-          echo "RELEASE_VERSION=$(bun release-it ${{env.BUMP_LEVEL}} ${{env.PRE_RELEASE}} ${{env.PRE_RELEASE_ID}} --release-version)" >> $GITHUB_ENV
+          echo "RELEASE_VERSION=$(bun release-it ${{env.BUMP_LEVEL}} --release-version)" >> $GITHUB_ENV
           echo "RELEASE_VERSION=${{ env.RELEASE_VERSION }}"
         env:
           RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
@@ -102,7 +78,7 @@ jobs:
           cd release
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
-          echo "BUMP_OUTPUT=$(bun release-it ${{env.BUMP_LEVEL}} ${{env.PRE_RELEASE}} ${{env.PRE_RELEASE_ID}} --ci)" >> $GITHUB_ENV
+          echo "BUMP_OUTPUT=$(bun release-it ${{env.BUMP_LEVEL}} --ci)" >> $GITHUB_ENV
 
       - name: Debug The Bump
         run: |
@@ -146,7 +122,6 @@ jobs:
           name: Release ${{ steps.capture_release_version.outputs.RELEASE_VERSION }}
           token: ${{ secrets.PAT_TOKEN }}
           tag_name: ${{ env.RELEASE_VERSION }}
-          prerelease: ${{ env.PRE_RELEASE != '' && env.PRE_RELEASE != 'false' }}
           files: |
             *.zip
 
